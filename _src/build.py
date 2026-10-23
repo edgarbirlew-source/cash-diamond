@@ -97,8 +97,8 @@ PATCHES = [
   ("function newPitchStage(si){", "function newPitchStage(si){if(window.CD&&CD.stop('pc',si))return;"),
   ("if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){",
    "if(window.CD&&S.cur>=S.unlocked&&CD.wall('lg',S.unlocked+1))CD.beat('lg');else if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){"),
-  ("G.phase='switch';banner('SIDE RETIRED'",
-   "if(window.CD&&G.mode==='game'&&!G.online&&!G.top&&G.inning===1&&!G.cdB){G.cdB=1;const gb=G;if(CD.brk(()=>{paused=false;if(G===gb)endHalf()})){G.phase='switch';return}}G.phase='switch';banner('SIDE RETIRED'"),
+  ("G.you!==G.cpu){gameOver();return}\n G.phase='switch';banner('SIDE RETIRED'",
+   "G.you!==G.cpu){gameOver();return}\n if(window.CD&&G.mode==='game'&&!G.online&&!G.top&&G.inning===1&&!G.cdB){G.cdB=1;const gb=G;if(CD.brk(()=>{paused=false;if(G===gb)endHalf()})){G.phase='switch';return}}G.phase='switch';banner('SIDE RETIRED'"),
 ]
 for a, b in PATCHES:
   assert rest.count(a) == 1, 'patch anchor not found once: ' + a[:50]
