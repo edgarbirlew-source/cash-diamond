@@ -85,7 +85,6 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
 # Full Game: free tier, inning-break card and the $3.99 Stripe unlock (web app only).
 CD_API = 'https://unlock-production-90f0.up.railway.app'
 CD_PAY = ''  # the BIRCO Stripe Payment Link (https://buy.stripe.com/...); empty = "opens soon"
-here = pathlib.Path(__file__).parent
 PATCHES = [
   ("b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};lv.appendChild(b)});",
    "b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};if(window.CD)CD.dress('lg',i,b);lv.appendChild(b)});"),
