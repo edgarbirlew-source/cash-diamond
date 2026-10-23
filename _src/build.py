@@ -30,6 +30,25 @@ assert old_msg in rest
 rest = rest.replace(old_msg,
   f"Online Vs runs on the Claude version of the game for now. <a href=\\'{CLAUDE_LINK}\\' style=\\'color:#ffd23f\\'>Open it there</a> to play a friend.")
 
+# Online Vs in the web app: private rooms on our own server (Railway "vs"), Copy/Share code.
+CD_VS = 'https://vs-production-b01d.up.railway.app'
+here = pathlib.Path(__file__).parent
+VS_PATCHES = [
+  ("NET.room=window.claude&&window.claude.use?await window.claude.use('room'):null",
+   "NET.room=window.CDVS?CDVS.room():window.claude&&window.claude.use?await window.claude.use('room'):null"),
+  ("NET.code=code.toUpperCase();", "NET.code=(NET.mr.code||code).toUpperCase();"),
+  ("catch(e){onlineMsg('Could not join that match. Check the code and try again.');return}",
+   "catch(e){onlineMsg(e&&e.cdMsg||'Could not join that match. Check the code and try again.');return}"),
+  ("if(!NET.mr){\n  const lobby=", "if(!NET.mr&&window.CDVS)return CDVS.lobby(box);\n if(!NET.mr){\n  const lobby="),
+  ("box.appendChild(w);\n const row=", "box.appendChild(w);if(window.CDVS)CDVS.shareRow(w);\n const row="),
+]
+for a, b in VS_PATCHES:
+  assert rest.count(a) == 1, 'vs patch anchor not found once: ' + a[:50]
+  rest = rest.replace(a, b)
+vs = (here / 'vs.js').read_text().replace('__CD_VS__', CD_VS)
+assert rest.count('</body></html>') == 1
+rest = rest.replace('</body></html>', '<script>\n' + vs + '</script>\n</body></html>')
+
 app_js = f'''
 <script>
 /* ---- installable app: offline cache + install button ---- */
@@ -46,6 +65,6 @@ rest = rest.rstrip()[:-len('</body></html>')] + app_js + '</body></html>\n'
 
 out = pathlib.Path('dist'); out.mkdir(exist_ok=True)
 (out / 'index.html').write_text(head + '\n' + rest)
-sw = pathlib.Path('sw.template.js').read_text().replace('__VERSION__', VERSION)
+sw = (here / 'sw.template.js').read_text().replace('__VERSION__', VERSION)
 (out / 'sw.js').write_text(sw)
 print('built', VERSION, len(head + rest), 'bytes')
