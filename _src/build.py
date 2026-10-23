@@ -82,6 +82,33 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
  addEventListener('appinstalled',()=>{{b.hidden=true}});}})();
 </script>
 '''
+# Full Game: free tier, inning-break card and the $3.99 Stripe unlock (web app only).
+CD_API = 'https://unlock-production-90f0.up.railway.app'
+CD_PAY = ''  # the BIRCO Stripe Payment Link (https://buy.stripe.com/...); empty = "opens soon"
+here = pathlib.Path(__file__).parent
+PATCHES = [
+  ("b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};lv.appendChild(b)});",
+   "b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};if(window.CD)CD.dress('lg',i,b);lv.appendChild(b)});"),
+  ("b.onclick=()=>{$('title').hidden=true;newDerby({dlv:i})};box.appendChild(b)}}",
+   "b.onclick=()=>{$('title').hidden=true;newDerby({dlv:i})};if(window.CD)CD.dress('dv',i,b);box.appendChild(b)}}"),
+  ("b.onclick=()=>{$('title').hidden=true;newPitchStage(i)};box.appendChild(b)}}",
+   "b.onclick=()=>{$('title').hidden=true;newPitchStage(i)};if(window.CD)CD.dress('pc',i,b);box.appendChild(b)}}"),
+  ("function newGame(){", "function newGame(){if(window.CD&&CD.stop('lg',S.cur))return;"),
+  ("function newDerby(opts){opts=opts||{};", "function newDerby(opts){opts=opts||{};if(window.CD&&!opts.online&&CD.stop('dv',opts.dlv??0))return;"),
+  ("function newPitchStage(si){", "function newPitchStage(si){if(window.CD&&CD.stop('pc',si))return;"),
+  ("if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){",
+   "if(window.CD&&S.cur>=S.unlocked&&CD.wall('lg',S.unlocked+1))CD.beat('lg');else if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){"),
+  ("G.phase='switch';banner('SIDE RETIRED'",
+   "if(window.CD&&G.mode==='game'&&!G.online&&!G.top&&G.inning===1&&!G.cdB){G.cdB=1;const gb=G;if(CD.brk(()=>{paused=false;if(G===gb)endHalf()})){G.phase='switch';return}}G.phase='switch';banner('SIDE RETIRED'"),
+]
+for a, b in PATCHES:
+  assert rest.count(a) == 1, 'patch anchor not found once: ' + a[:50]
+  rest = rest.replace(a, b)
+fg = (here / 'fullgame.js').read_text().replace('__CD_API__', CD_API).replace('__CD_PAY__', CD_PAY)
+anchor = '<script>\n// ================= catalog'
+assert rest.count(anchor) == 1
+rest = rest.replace(anchor, '<script>\n' + fg + '</script>\n' + anchor)
+
 assert rest.rstrip().endswith('</body></html>')
 rest = rest.rstrip()[:-len('</body></html>')] + app_js + '</body></html>\n'
 
