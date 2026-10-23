@@ -45,6 +45,7 @@ out.thirdPlayer = await kid3.textContent('#onMsg');
 await kid3.screenshot({ path: shots + '/vs-4-full.png' });
 
 await dad.waitForSelector('#rdy:not([disabled])');
+await dad.tap('[data-gm=derby]'); await wait(500);
 await dad.tap('#rdy'); await son.tap('#rdy');
 await wait(4200);
 out.seeds = await Promise.all([dad, son].map(p => p.evaluate(() => [G.online, G.seed, G.phase])));

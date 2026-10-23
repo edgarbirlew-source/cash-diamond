@@ -1,13 +1,15 @@
 // Cash Diamond Online Vs rooms (Railway Function, Bun). Invite-only: a room exists only after
 // a player creates it, holds two players, and is reached by its 6-character code. No chat,
 // no lobby, nothing written to disk. Presence is a small JSON object relayed to the other player.
-// WS /vs   client sends {t:'create'|'join'|'resume'|'presence'|'leave'|'ping', ...}
+// WS /vs   client sends {t:'create'|'join'|'resume'|'presence'|'msg'|'leave'|'ping', ...}
+// 'msg' carries game moves (pitch, swing, result) to the other player: numbers, true/false and short
+// lowercase codes only, so nothing typed by a player can pass through.
 const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ORIGINS = ['https://edgarbirlew-source.github.io', 'http://localhost:8099'];
 const GRACE = 120_000;        // a dropped player keeps their seat this long
 const ROOM_MAX = 3 * 3600_000; // rooms close after 3 hours no matter what
 
-type Peer = { id: string; token: string; p: Record<string, unknown>; ws: any; timer?: Timer };
+type Peer = { id: string; token: string; p: Record<string, unknown>; ws: any; timer?: Timer; inbox: unknown[] };
 type Room = { code: string; peers: Map<string, Peer>; born: number; timer?: Timer };
 const rooms = new Map<string, Room>();
 
@@ -15,6 +17,18 @@ const rand = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n))
 const tok = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), x => x.toString(16).padStart(2, '0')).join('');
 const send = (ws: any, o: unknown) => { try { ws?.send(JSON.stringify(o)) } catch (e) { } };
 
+const CODE = /^[a-z_]{1,12}$/;
+// a game move: nested objects/arrays (depth 3), finite numbers, booleans, null, lowercase codes
+function move(v: unknown, depth = 0): unknown {
+  if (v === null || typeof v === 'boolean') return v;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (typeof v === 'string') return CODE.test(v) ? v : null;
+  if (depth >= 3 || typeof v !== 'object') return null;
+  if (Array.isArray(v)) return v.slice(0, 12).map(x => move(x, depth + 1));
+  const o: Record<string, unknown> = {};
+  for (const [k, x] of Object.entries(v as Record<string, unknown>).slice(0, 24)) if (k.length <= 12) o[k] = move(x, depth + 1);
+  return o;
+}
 function clean(p: unknown) {
   const o: Record<string, unknown> = {};
   if (!p || typeof p !== 'object') return o;
@@ -22,7 +36,8 @@ function clean(p: unknown) {
     if (k.length > 12) continue;
     if (k === 'nick') o.nick = String(v ?? '').replace(/[<>&"]/g, '').slice(0, 14);
     else if (v === null || typeof v === 'boolean' || typeof v === 'number') o[k] = v;
-    else if (k === 'go' && typeof v === 'object') o.go = { seed: Number((v as any).seed) | 0, n: Number((v as any).n) || 0 };
+    else if (typeof v === 'string' && CODE.test(v)) o[k] = v;
+    else if (k === 'go' && typeof v === 'object') o.go = { seed: Number((v as any).seed) | 0, n: Number((v as any).n) || 0, gm: CODE.test(String((v as any).gm)) ? (v as any).gm : 'derby' };
   }
   return o;
 }
@@ -36,7 +51,7 @@ function drop(r: Room, id: string) {
   if (!r.peers.size) { clearTimeout(r.timer); rooms.delete(r.code) } else broadcast(r);
 }
 function seat(r: Room, ws: any, nick: unknown) {
-  const x: Peer = { id: rand(8), token: tok(), p: clean({ nick }), ws };
+  const x: Peer = { id: rand(8), token: tok(), p: clean({ nick }), ws, inbox: [] };
   r.peers.set(x.id, x); ws.data.room = r.code; ws.data.id = x.id;
   send(ws, { t: 'joined', code: r.code, me: x.id, token: x.token });
   broadcast(r);
@@ -95,6 +110,7 @@ Bun.serve({
           if (x.ws && x.ws !== ws) { x.ws.data.room = ''; try { x.ws.close() } catch (e) { } }
           x.ws = ws; d.room = room.code; d.id = x.id;
           send(ws, { t: 'joined', code: room.code, me: x.id, token: x.token, resumed: true });
+          for (const d of x.inbox.splice(0)) send(ws, d);
           return broadcast(room);
         }
         case 'presence': {
@@ -102,6 +118,12 @@ Bun.serve({
           Object.assign(me.p, clean(m.p));
           if (JSON.stringify(me.p).length > 1024) me.p = clean({ nick: me.p.nick });
           return broadcast(r);
+        }
+        case 'msg': {
+          if (!r || !me) return;
+          const d = { t: 'msg', d: move(m.d) };
+          for (const x of r.peers.values()) if (x !== me) { if (x.ws) send(x.ws, d); else if (x.inbox.length < 60) x.inbox.push(d) }
+          return;
         }
         case 'leave': {
           if (r) drop(r, d.id);
