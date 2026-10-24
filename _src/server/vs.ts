@@ -5,7 +5,8 @@
 // 'msg' carries game moves (pitch, swing, result) to the other player: numbers, true/false and short
 // lowercase codes only, so nothing typed by a player can pass through.
 const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const ORIGINS = ['https://edgarbirlew-source.github.io', 'http://localhost:8099'];
+// store apps: Android serves the game from https://localhost, iOS from capacitor://localhost
+const ORIGINS = ['https://edgarbirlew-source.github.io', 'https://localhost', 'capacitor://localhost', 'http://localhost:8099'];
 const GRACE = 120_000;        // a dropped player keeps their seat this long
 const ROOM_MAX = 3 * 3600_000; // rooms close after 3 hours no matter what
 
