@@ -188,6 +188,9 @@ button.gold{background:#ff8a1f;color:#fff;text-shadow:0 2px 0 var(--ink)}
 .oncode b{color:var(--sun);font-weight:400;font-size:1.4em;letter-spacing:.12em;text-shadow:0 2px 0 var(--ink)}
 .onplayers{display:flex;flex-direction:column;gap:4px;color:var(--cream);font-weight:800;font-size:clamp(12px,3.6cqw,15px)}
 .onplayers .ok{color:#8ff0a8}
+.oninv{display:flex;flex-direction:column;gap:8px}
+.oninv .big{flex:none;font-size:clamp(14px,4.6cqw,19px);padding:11px 8px 8px}
+.oninvt{background:rgba(0,0,0,.28);color:var(--sun);border:2px dashed rgba(255,210,63,.7);border-radius:10px;padding:7px 9px;font-weight:700;font-size:clamp(11px,3.3cqw,13px);line-height:1.3;word-break:break-word;user-select:all;-webkit-user-select:all}
 .big:disabled{opacity:.45}
 #onBack{flex:none;width:100%;margin-top:4px}
 #closeShop{flex:none;padding:12px 10px 9px;font-size:18px}
@@ -1232,6 +1235,17 @@ function onlineResult(){if(G.vs||!G.online||G.phase!=='over')return;const o=NET.
  const os=o?o.score|0:0,win=!o||G.pts>os,tie=o&&G.pts===os;if(win&&!tie&&!G.paid){G.paid=true;earn(2000,'Online win')}
  showOverlay(tie?'Tie Game!':win?'You Win!':'You Lost',o?`You ${G.pts} – ${os} ${o.nick||'Rival'}`:`Your rival left. You win with ${G.pts} points.`,false,'online')}
 function onlineMsg(t){const m=$('onMsg');if(m)m.textContent=t}
+// Share invite under the match code: the phone's share sheet when allowed, else copy
+const GAME_LINK='https://claude.ai/artifact/KiT4WVL5SpJTVN3nCQtmyg';
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){}
+ try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(x){return false}}
+function shareInvite(w){const code=NET.code,text=`Play me in Cash Diamond Baseball! Open ${GAME_LINK} , tap Online Vs and join code ${code}`;
+ const d=document.createElement('div');d.className='oninv';
+ d.innerHTML=`<button class="big" id="invShare">📤 Share invite</button><div class="oninvt">${text.replace(/[<>&]/g,'')}</div><button class="big alt" id="invCopy">Copy invite</button>`;
+ const c=w.querySelector('.oncode');c.after(d);
+ const copied=async()=>onlineMsg(await copyText(text)?'Invite copied! Paste it in a text to your friend.':'Copy did not work. Press and hold the invite text to copy it.');
+ d.querySelector('#invCopy').onclick=copied;
+ d.querySelector('#invShare').onclick=async()=>{try{if(navigator.share){await navigator.share({title:'Cash Diamond',text});return}}catch(e){if(e&&e.name==='AbortError')return}copied()}}
 function renderOnline(){const box=$('onBody');if(!box)return;box.innerHTML='';
  if(!NET.avail){box.innerHTML='<p class="onnote">Online Vs runs on the Claude version of the game for now. <a href=\'https://claude.ai/artifact/KiT4WVL5SpJTVN3nCQtmyg\' style=\'color:#ffd23f\'>Open it there</a> to play a friend.</p>';return}
  if(!NET.mr&&window.CDVS)return CDVS.lobby(box);
@@ -1252,8 +1266,9 @@ function renderOnline(){const box=$('onBody');if(!box)return;box.innerHTML='';
   return}
  const me=NET.peers.find(p=>p.isMe&&p.sameTab),opp=oppOf(NET.peers),meReady=me&&me.presence.ready;
  const w=document.createElement('div');w.className='oncol';
- w.innerHTML=`<div class="oncode">Match code <b>${NET.code}</b></div><p class="onnote">${NET.host?'Send this code to your friend. ':''}Both players hit Ready. You each get the same 10-out derby with the same pitches and balloons. Highest score wins $2,000.</p>`+
+ w.innerHTML=`<div class="oncode">Match code <b>${NET.code}</b></div><p class="onnote">${NET.host?'Tap Share invite to send it to your friend. ':''}Both players hit Ready. You each get the same 10-out derby with the same pitches and balloons. Highest score wins $2,000.</p>`+
   `<div class="onplayers"><div>${(nick()||'You').replace(/[<>&]/g,'')} (you) — ${meReady?'<b class="ok">READY</b>':'not ready'}</div><div>${opp?String(opp.presence.nick).replace(/[<>&]/g,'')+' — '+(opp.presence.ready?'<b class="ok">READY</b>':'not ready'):'Waiting for a player to join…'}</div></div>`;
+ if(NET.host&&!window.CDVS)shareInvite(w);
  box.appendChild(w);if(window.CDVS)CDVS.shareRow(w);if(window.VS)VS.modeRow(w);
  const row=document.createElement('div');row.className='onrow';row.innerHTML=`<button class="big" id="rdy" ${opp?'':'disabled'}>${meReady?'Ready ✓':'Ready'}</button><button class="big alt" id="lvMatch">Leave</button>`;box.appendChild(row);
  $('rdy').onclick=()=>NET.mr&&NET.mr.presence({ready:!meReady}).catch(()=>{});$('lvMatch').onclick=async()=>{await leaveMatch();renderOnline()}}
@@ -1647,6 +1662,9 @@ window.CDVS=(()=>{
 .vsjoin{display:flex;gap:8px}.vsjoin input{flex:1;min-width:0;text-align:center;letter-spacing:.14em;text-transform:uppercase}
 .vsjoin .big,.vsshare .big{flex:none;font-size:clamp(12px,3.8cqw,16px);padding:10px 12px 7px}
 .vsshare{display:flex;gap:8px}.vsshare .big{flex:1}
+.vsinv{display:flex;flex-direction:column;gap:8px}
+.vsinv #vsShare{font-size:clamp(17px,5.4cqw,22px);padding:13px 10px 10px}
+.vslink{display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,.28);color:#ffd23f;border:2px dashed rgba(255,210,63,.7);border-radius:10px;padding:8px 10px;font:700 clamp(11px,3.4cqw,14px)/1.3 var(--body,sans-serif);word-break:break-all;user-select:all;-webkit-user-select:all;text-align:center}
 .vsor{color:var(--cream);opacity:.8;text-align:center;font-weight:700;font-size:13px}
 #vsToast{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));transform:translateX(-50%);z-index:40;background:var(--ink,#1a1a2e);color:#ffd23f;font-weight:700;font-family:var(--body,sans-serif);font-size:14px;padding:7px 14px;border-radius:999px;border:2px solid #ffd23f;pointer-events:none}
 `;document.head.appendChild(css);
@@ -1659,7 +1677,7 @@ window.CDVS=(()=>{
   const m=t.match(new RegExp('VS=\\s*'+re))||t.match(new RegExp('CODE[:\\s]+'+re))||t.replace(/[\s-]/g,'').match(new RegExp('^'+re+'$'))||t.match(new RegExp('\\b'+re+'\\b'));
   return m?m[1]:''}
  const link=code=>location.origin+location.pathname+'?vs='+code;
- const msg=code=>`Play me in Cash Diamond Home Run Derby! Code: ${code}`;
+ const msg=code=>`Play me in Cash Diamond Baseball! Tap the link to join my game. Code: ${code}`;
 
  // One match connection. Looks like the Claude room API the game already uses.
  function Match(){
@@ -1722,17 +1740,24 @@ window.CDVS=(()=>{
   $('vsMake').onclick=()=>{if(!nm())return onlineMsg('Type a nickname first.'),$('nickIn').focus();onlineMsg('');joinMatch('new',true)};
   $('jnMatch').onclick=()=>{const c=parse($('codeIn').value);if(!nm())return onlineMsg('Type a nickname first.'),$('nickIn').focus();
    if(!c)return onlineMsg('Game codes are 6 letters and numbers.');$('codeIn').value=c;onlineMsg('Joining…');joinMatch(c,false).then(()=>{if(NET.mr)onlineMsg('')})};
-  if(pre&&n)$('jnMatch').click();else if(pre)$('nickIn').focus()}
+  if(pre){if(!n)$('nickIn').value='Guest';$('jnMatch').click()}}
 
- // Copy and Share buttons under the match code.
- function shareRow(box){if(!NET.code||!NET.host)return;const code=NET.code;
-  const row=document.createElement('div');row.className='vsshare';
-  row.innerHTML=`<button class="big alt" id="vsCopy">Copy code</button>${navigator.share?'<button class="big" id="vsShare">Share</button>':''}`;
+ // Share button under the match code: the phone's share sheet (text, WhatsApp...), else copy.
+ // The full link is shown too, so it can be read out or copied by hand.
+ async function copy(t){try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(x){return false}}
+ function shareRow(box){if(!NET.code||!NET.host)return;const code=NET.code,url=link(code),text=msg(code);
+  const row=document.createElement('div');row.className='vsinv';
+  row.innerHTML=`<button class="big" id="vsShare">📤 Share invite link</button><div class="vslink" id="vsLink">${esc(url)}</div><button class="big alt" id="vsCopy">Copy link</button>`;
   const code$=box.querySelector('.oncode');(code$&&code$.parentNode||box).insertBefore(row,code$?code$.nextSibling:null);
-  $('vsCopy').onclick=async()=>{const t=msg(code)+'\n'+link(code);let ok=false;
-   try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}
-   onlineMsg(ok?'Copied! Paste it in a text to your friend.':'Copy did not work. Tell your friend the code: '+code)};
-  if(navigator.share)$('vsShare').onclick=()=>navigator.share({title:'Cash Diamond',text:msg(code),url:link(code)}).catch(()=>{})}
+  const copied=async()=>onlineMsg(await copy(text+'\n'+url)?'Link copied! Paste it in a text to your friend.':'Copy did not work. Send your friend this link: '+url);
+  $('vsCopy').onclick=copied;
+  $('vsShare').onclick=async()=>{
+   const cap=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Share;
+   try{if(navigator.share){await navigator.share({title:'Cash Diamond',text,url});return}
+    if(cap){await cap.share({title:'Cash Diamond',text,url,dialogTitle:'Send the game link'});return}}
+   catch(e){if(e&&(e.name==='AbortError'||/cancel/i.test(e.message||'')))return}
+   copied()}}
 
  // Opened from a shared link: go straight to Join with the code filled in.
  let pending='';
@@ -1838,7 +1863,7 @@ window.VS=(()=>{
  // match screen: the host picks the game, both see it
  function modeRow(w){const gm=NET.host?(NET.gm||'ball'):((NET.peers.find(p=>p.presence&&p.presence.host)||{}).presence||{}).gm||'ball';
   const note=w.querySelector('.onnote');
-  if(note)note.textContent=(NET.host?'Send this code to your friend. ':'')+(gm==='ball'?'Live game: one of you pitches, the other bats, and you switch every 3 outs. 3 innings, most runs wins $2,000.':'Race: you each bat against the same computer pitches in a 10-out derby. Highest score wins $2,000.');
+  if(note)note.textContent=(NET.host?'Tap Share to send your friend the link. ':'')+(gm==='ball'?'Live game: one of you pitches, the other bats, and you switch every 3 outs. 3 innings, most runs wins $2,000.':'Race: you each bat against the same computer pitches in a 10-out derby. Highest score wins $2,000.');
   const row=document.createElement('div');row.className='vsshare';
   if(NET.host){row.innerHTML=`<button class="big ${gm==='ball'?'':'alt'}" data-gm="ball">Pitch &amp; Bat</button><button class="big ${gm==='derby'?'':'alt'}" data-gm="derby">HR Derby race</button>`;
    row.querySelectorAll('button').forEach(b=>b.onclick=()=>{NET.gm=b.dataset.gm;if(NET.mr)NET.mr.presence({gm:NET.gm}).catch(()=>{});renderOnline()})}
