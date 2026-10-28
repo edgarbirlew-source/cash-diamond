@@ -180,6 +180,8 @@ button.gold{background:#ff8a1f;color:#fff;text-shadow:0 2px 0 var(--ink)}
 .oninv .big{flex:none;font-size:clamp(14px,4.6cqw,19px);padding:11px 8px 8px}
 .oninvt{background:rgba(0,0,0,.28);color:var(--sun);border:2px dashed rgba(255,210,63,.7);border-radius:10px;padding:7px 9px;font-weight:700;font-size:clamp(11px,3.3cqw,13px);line-height:1.3;word-break:break-word;user-select:all;-webkit-user-select:all}
 .big:disabled{opacity:.45}
+a.big.webapp{display:block;text-align:center;text-decoration:none;font-family:var(--display);font-size:clamp(14px,4.6cqw,19px);padding:11px 8px 8px;background:#3fae5a;color:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 5px 0 var(--ink);text-shadow:0 2px 0 var(--ink)}
+.weblink{color:var(--sun);word-break:break-all;user-select:all;-webkit-user-select:all}
 #onBack{flex:none;width:100%;margin-top:4px}
 #closeShop{flex:none;padding:12px 10px 9px;font-size:18px}
 .items{flex:1 1 auto}
@@ -1234,8 +1236,13 @@ function shareInvite(w){const code=NET.code,text=`Play me in Cash Diamond Baseba
  const copied=async()=>onlineMsg(await copyText(text)?'Invite copied! Paste it in a text to your friend.':'Copy did not work. Press and hold the invite text to copy it.');
  d.querySelector('#invCopy').onclick=copied;
  d.querySelector('#invShare').onclick=async()=>{try{if(navigator.share){await navigator.share({title:'Cash Diamond',text});return}}catch(e){if(e&&e.name==='AbortError')return}copied()}}
-function renderOnline(){const box=$('onBody');if(!box)return;box.innerHTML='';
- if(!NET.avail){box.innerHTML='<p class="onnote">Online play needs you signed in to Claude, and the game shared with the person you want to play. Open it from the Claude app and try again.</p>';return}
+// Claude version: point people to the real web app, where a friend joins with one tap (link with ?vs=CODE, no Claude sign-in)
+const WEB_APP='https://edgarbirlew-source.github.io/cash-diamond/';
+function webAppTip(box){const d=document.createElement('div');d.className='oninv';
+ d.innerHTML=`<a class="big webapp" href="${WEB_APP}" target="_blank" rel="noopener">📲 Play online in the web app</a><p class="onnote">Best way to play a friend: open the web app, tap Online Vs, then Share invite link. Your friend just taps the link, no Claude sign-in. Web app link: <b class="weblink">${WEB_APP}</b></p>`;
+ box.appendChild(d)}
+function renderOnline(){const box=$('onBody');if(!box)return;box.innerHTML='';if(!window.CDVS)webAppTip(box);
+ if(!NET.avail){box.insertAdjacentHTML('beforeend','<p class="onnote">Online play needs you signed in to Claude, and the game shared with the person you want to play. Open it from the Claude app and try again.</p>');return}
  if(!NET.mr){
   const lobby=(NET.room.peers()||[]).filter(p=>!p.isMe&&p.presence&&p.presence.open);
   const h=document.createElement('div');h.className='oncol';
