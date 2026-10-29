@@ -30,6 +30,21 @@ assert old_msg in rest
 rest = rest.replace(old_msg,
   f"Online Vs runs on the Claude version of the game for now. <a href=\\'{CLAUDE_LINK}\\' style=\\'color:#ffd23f\\'>Open it there</a> to play a friend.")
 
+# Fielding fixes (2026-10-25, "pop fly glove"): foul pop-ups can be caught for an out,
+# and the batter name pill steps aside while the glove ring is up.
+GAME_PATCHES = [
+  ("if(o==='foul'){if(G.strikes<2)G.strikes++;banner('FOUL BALL','','#ffb627',900);nextPitch(900);return}\n if(o==='ground'){if(Math.random()<.74)",
+   "if(o==='foul'&&Math.random()>=.4){if(G.strikes<2)G.strikes++;banner('FOUL BALL','','#ffb627',900);nextPitch(900);return}\n if(o==='ground'){if(Math.random()<.74)"),
+  ("const spec={fly:{dur:1800,win:17,pay:100,label:'Can of corn',name:'FLY BALL',fail:'single',failTxt:'Dropped it!'},",
+   "const spec={foul:{dur:1600,win:16,pay:100,label:'Foul pop out',name:'FOUL POP',fail:'foul',failTxt:'Out of reach'},fly:{dur:1800,win:17,pay:100,label:'Can of corn',name:'FLY BALL',fail:'single',failTxt:'Dropped it!'},"),
+  (" else allowHit(c.fail,c.failTxt)},420)}",
+   " else if(c.fail==='foul'){if(G.strikes<2)G.strikes++;banner('FOUL BALL',c.failTxt,'#ffb627',900);nextPitch(900)}else allowHit(c.fail,c.failTxt)},420)}"),
+  ("const cb=playing&&!der&&!isPC()?curBatter():null;", "const cb=playing&&!der&&!isPC()&&G.phase!=='catch'?curBatter():null;"),
+]
+for a, b2 in GAME_PATCHES:
+  assert rest.count(a) == 1, 'game patch anchor not found once: ' + a[:50]
+  rest = rest.replace(a, b2)
+
 # Online Vs in the web app: private rooms on our own server (Railway "vs"), Copy/Share code.
 CD_VS = 'https://vs-production-b01d.up.railway.app'
 here = pathlib.Path(__file__).parent
@@ -52,7 +67,8 @@ VS_PATCHES = [
   ("if(!G.top){const inZ=inZone(P.final);", "if(!G.top&&!G.vs){const inZ=inZone(P.final);"),
   ("contact(d.q,d.pw,d.aim);return}", "contact(d.q,d.pw,d.aim);if(G.vs&&G.top)VS.hit();return}"),
   ("if(t>=1.12&&!P.hit&&!P.pend&&!isPC())takeResult()}", "if(t>=1.12&&!P.hit&&!P.pend&&!isPC()&&!(G.vs&&!G.top)){takeResult();if(G.vs)VS.res()}}"),
-  ("G.phase='settle';if(G.top)batResult();else defResult()}", "G.phase='settle';if(G.top){batResult();if(G.vs)VS.res()}else if(!G.vs)defResult()}"),
+  ("G.phase='settle';if(G.top)batResult();else defResult()}", "G.phase='settle';if(G.top){if(!(G.vs&&VS.land())){batResult();if(G.vs)VS.res()}}else if(!G.vs)defResult()}"),
+  ("function finishCatch(ok){CT.done=true;CT.ok=ok;", "function finishCatch(ok){CT.done=true;CT.ok=ok;if(G.vs)return VS.caught(ok);"),
   ("if(isPC()){pcUpdate(now,dtU);return}\n", "if(isPC()){pcUpdate(now,dtU);return}if(G.vs)VS.tick(now);\n"),
   ("P.swung=true;const b0=bat()", "P.swung=true;if(G.vs)VS.sw();const b0=bat()"),
   ("function endHalf(){\n", "function endHalf(){if(G.vs)return VS.endHalf();\n"),

@@ -117,12 +117,18 @@ window.CDVS=(()=>{
    Each phone keeps its own G with G.top = "I'm batting". The batter's phone decides every
    result and sends it; the pitcher's phone shows the same pitch, swing and ball flight. */
 window.VS=(()=>{
- const T1={k:'STRUCK OUT',strike:'STRIKE',cstrike:'CALLED STRIKE',ball:'BALL',walk:'WALK',foul:'FOUL BALL',fly:'FLIED OUT',ground:'GROUNDED OUT',single:'SINGLE',double:'DOUBLE',triple:'TRIPLE',hr:'HOME RUN!'};
+ const T1={k:'STRUCK OUT',strike:'STRIKE',cstrike:'CALLED STRIKE',ball:'BALL',walk:'WALK',foul:'FOUL BALL',fly:'FLIED OUT',caught:'ROBBED!',ground:'GROUNDED OUT',single:'SINGLE',double:'DOUBLE',triple:'TRIPLE',hr:'HOME RUN!'};
  const CODE=Object.fromEntries(Object.entries(T1).map(([k,v])=>[v,k]));
  // what the pitcher's phone says for each result
  const PIT={k:['STRIKEOUT!','Sat him down','#5ee08a'],strike:['STRIKE','','#5ee08a'],cstrike:['CALLED STRIKE','Painted the corner','#5ee08a'],ball:['BALL','','#8e98be'],
-  walk:['WALK','Ball four','#ff5a5f'],foul:['FOUL BALL','','#ffb627'],fly:['FLY OUT','Can of corn','#5ee08a'],ground:['GROUND OUT','Infield handles it','#5ee08a'],
+  walk:['WALK','Ball four','#ff5a5f'],foul:['FOUL BALL','','#ffb627'],fly:['FLY OUT','Can of corn','#5ee08a'],caught:['CAUGHT!','Nice grab','#5ee08a'],ground:['GROUND OUT','Infield handles it','#5ee08a'],
   single:['SINGLE','','#ff5a5f'],double:['DOUBLE','','#ff5a5f'],triple:['TRIPLE','','#ff5a5f'],hr:['HOME RUN!','Gone!','#ff5a5f']};
+ // the fielder's phone gets the glove ring, same as Play Ball
+ const CATCH={foul:{dur:1600,win:16,pay:100,label:'Foul pop out',name:'FOUL POP',fail:'foul'},fly:{dur:1800,win:17,pay:100,label:'Can of corn',name:'FLY BALL',fail:'single'},
+  single:{dur:1300,win:14,pay:150,label:'Line-drive snag',name:'LINE DRIVE',fail:'single'},
+  double:{dur:1200,win:12,pay:250,label:'Diving catch',name:'GAP SHOT',fail:'double'},
+  triple:{dur:1150,win:12,pay:250,label:'Diving catch',name:'DOWN THE LINE',fail:'triple'},
+  hr:{dur:1000,win:10,pay:600,label:'Home run robbery',name:'AT THE WALL!',fail:'hr'}};
  let bound=null,waitT=0;
  const v=()=>G.vs;
  const send=d=>{if(NET.mr&&NET.mr.send)NET.mr.send(Object.assign({g:v().g,h:v().half},d))};
@@ -146,17 +152,29 @@ window.VS=(()=>{
  function sw(){if(G.top)send({t:'sw'})}
  function hit(){if(!F)return;const f=F;send({t:'hit',f:{out:f.out,q:f.q,X0:f.X0,Z0:f.Z0,h0:f.h0,pw:f.pw,X1:f.X1,Z1:f.Z1,h1:f.h1,peak:f.peak,dur:f.dur}})}
  // batter: the pitch is decided, send the result and the new count
- function res(){const s=v();if(!s||!G.top)return;const k=CODE[G.banner&&G.banner.t1]||'strike';
+ function res(k0){const s=v();if(!s||!G.top)return;const k=k0||CODE[G.banner&&G.banner.t1]||'strike';
   send({t:'res',k,st:{b:G.balls|0,s:G.strikes|0,o:G.outs|0,bases:G.bases.map(x=>x?1:0),r:G.you|0},pa:G.balls===0&&G.strikes===0});
   if(G.outs<3)check()}
 
+ // batter: the ball came down. A catchable ball goes to the fielder's glove first.
+ function land(){const s=v(),o=F&&F.out;if(!s||!G.top||!CATCH[o]||(o==='single'&&Math.random()<.5)||(o==='foul'&&Math.random()>=.4))return false;
+  G.phase='vsCatch';s.ct={o,at:performance.now()};send({t:'ct',o});CDVS.toast(oppName()+' is going for the catch…');return true}
+ function landed(ok){const s=v(),c=s.ct;s.ct=null;CDVS.toast('');if(!c||G.phase!=='vsCatch')return;G.phase='settle';
+  if(ok){banner('ROBBED!','Caught by '+oppName(),'#ff5a5f');earn(-75,'Out',200,330);const k='caught';if(!addOut())nextPitch(1500);res(k);return}
+  F.out=CATCH[c.o].fail;batResult();res()}
+ // fielder: the ring was tapped (or missed)
+ function caught(ok){const s=v(),c=CT;send({t:'cr',ok:!!ok});if(ok&&c){G.cheerAt=performance.now();G.cheerTeam='you';earn(c.pay,c.label,200,300)}G.phase='settle';setTimeout(()=>{if(G.vs===s)CT=null},420)}
+
  function tick(now){const s=v();if(!s)return;
   if(G.top&&G.phase==='wait'&&G.next===Infinity&&now-waitT>1400)CDVS.toast(oppName()+' is picking a pitch…');
+  if(G.top&&G.phase==='vsCatch'&&s.ct&&now-s.ct.at>7000)landed(s.ct.o==='fly'); // no answer: old rules
   const m=s.q[0];if(!m)return;
   if(m.h>s.half)return; // next half inning: wait for our own switch
   if(m.t==='pitch'){if(!(G.top&&G.phase==='wait'&&G.next===Infinity))return;s.q.shift();CDVS.toast('');
    G.pend={k:PITCHES[m.k]?m.k:'fast',mph:+m.mph||80,tx:+m.tx,ty:+m.ty,cpu:true};G.phase='windup';G.relAt=now+650;ui();return}
-  if(G.top){s.q.shift();return}
+  if(G.top){s.q.shift();if(m.t==='cr')landed(m.ok);return}
+  if(m.t==='ct'){if(G.phase==='flight'||G.phase==='catch')return;s.q.shift();const sp=CATCH[m.o];if(!sp)return;
+   CT={...sp,win:sp.win*glove().mult,start:now,R0:190,T:46};G.phase='catch';ui();return}
   if(m.t==='sw'){if(!(G.phase==='pitch'&&P))return;s.q.shift();if(!P.swung){P.swung=true;G.swing={at:now,cAt:now+120,aimY:P.final.y,bx:P.final.x}}return}
   if(m.t==='hit'){if(!(G.phase==='pitch'&&P))return;s.q.shift();const f=m.f||{};
    const t=Math.min((now-P.start)/P.dur,1.05),pos=ballPos(P,t);
@@ -166,7 +184,7 @@ window.VS=(()=>{
    contactFX(pos.x,pos.y,f.out,F.q);if(f.out!=='foul')G.ba={mode:f.out==='hr'?'hr':'run',at:now+330,b:curBatter(),top:false};return}
   if(m.t==='res'){
    if(G.phase==='flight'||G.phase==='windup'||G.phase==='aim'||(G.phase==='pitch'&&P&&(now-P.start)/P.dur<1))return;
-   s.q.shift();apply(m);return}
+   s.q.shift();CT=null;apply(m);return}
   s.q.shift()}
 
  // pitcher: show the batter's result and copy the count, bases and score
@@ -216,4 +234,4 @@ window.VS=(()=>{
   else row.innerHTML=`<p class="onnote">Game: <b>${gm==='ball'?'Pitch &amp; Bat':'HR Derby race'}</b> (the host picks)</p>`;
   w.appendChild(row)}
 
- return{start,batWait,pitch,sw,hit,res,tick,endHalf,over,peers,modeRow}})();
+ return{start,batWait,pitch,sw,hit,res,land,caught,tick,endHalf,over,peers,modeRow}})();
