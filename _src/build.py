@@ -105,6 +105,23 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
  addEventListener('appinstalled',()=>{{b.hidden=true}});}})();
 </script>
 '''
+# iPhone long-press fix (2026-10-29, "long press glitch"): holding to power up a swing made
+# Safari select the page (grey tint, Copy / Find Selection / Translate) and cancel the swing.
+app_js += '''
+<style>
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea,[contenteditable],.oninvt,.vslink{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.oninvt,.vslink{-webkit-user-select:all;user-select:all}
+</style>
+<script>
+(()=>{const typing=t=>t&&t.closest&&t.closest('input,textarea,[contenteditable],.oninvt,.vslink');
+ const stop=e=>{if(!typing(e.target))e.preventDefault()};
+ addEventListener('contextmenu',stop);addEventListener('selectstart',stop);
+ for(const el of [document.querySelector('canvas'),document.getElementById('swingBtn')])if(el){
+  el.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+  el.addEventListener('touchmove',e=>e.preventDefault(),{passive:false})}})();
+</script>
+'''
 assert rest.rstrip().endswith('</body></html>')
 rest = rest.rstrip()[:-len('</body></html>')] + app_js + '</body></html>\n'
 
