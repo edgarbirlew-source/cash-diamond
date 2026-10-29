@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>Store upload helper</title>
+<p id="s">Sending store screenshots to the opener page...</p>
+<script>
+// Fetches store screenshots and hands them to the App Store Connect tab that opened this window.
+const base='https://raw.githubusercontent.com/edgarbirlew-source/cash-diamond/claude/project-thread-9p5ix3/app/store/';
+const sets=JSON.parse(decodeURIComponent(location.hash.slice(1)||'[]'));
+(async()=>{const files=[];for(const p of sets){const b=await fetch(base+p).then(r=>r.blob());files.push(new File([b],p.split('/').pop(),{type:b.type||'image/png'}))}
+window.opener.postMessage({cdFiles:files},'*');document.getElementById('s').textContent='Sent '+files.length+' files. You can close this window.';setTimeout(()=>window.close(),1500)})();
+</script>
