@@ -1,7 +1,7 @@
 # Builds the iOS app on GitHub's Mac and uploads it to TestFlight (no Mac needed at BIRCO).
 # Run it by hand (Actions > "iOS to TestFlight" > Run workflow), by pushing a tag like ios-1.0.0-2,
 # or by changing app/ios/RELEASE on the store apps branch.
-# Needs the repository secret ASC_KEY_P8 (the .p8 file contents of App Store Connect API key T58UR4UUGD).
+# Needs the repository secret ASC_KEY_P8 (the .p8 file contents of App Store Connect API key 4ZW5742DZ8).
 # Key id, issuer id and team id are set below (repository variables can override them).
 name: iOS to TestFlight
 on:
@@ -17,8 +17,8 @@ jobs:
       run:
         working-directory: app
     env:
-      # Key, issuer and team ids are not secret (only the .p8 is). Key T58UR4UUGD is the Admin key whose .p8 is in ASC_KEY_P8.
-      ASC_KEY_ID: ${{ vars.ASC_KEY_ID || 'T58UR4UUGD' }}
+      # Key, issuer and team ids are not secret (only the .p8 is). Key 4ZW5742DZ8 is the Admin key ('Cash Diamond CI') whose .p8 is in ASC_KEY_P8.
+      ASC_KEY_ID: ${{ vars.ASC_KEY_ID || '4ZW5742DZ8' }}
       ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID || '0327ee2c-9dea-4997-a752-35c5ebbb6162' }}
       APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '4Y9KCBG4Y8' }}
     steps:
