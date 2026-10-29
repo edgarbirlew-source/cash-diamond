@@ -1,11 +1,14 @@
 # Builds the iOS app on GitHub's Mac and uploads it to TestFlight (no Mac needed at BIRCO).
-# Run it by hand (Actions > "iOS to TestFlight" > Run workflow) or by pushing a tag like ios-1.0.0-2.
+# Run it by hand (Actions > "iOS to TestFlight" > Run workflow), by pushing a tag like ios-1.0.0-2,
+# or by changing app/ios/RELEASE on the store apps branch.
 # Needs these repository secrets (App Store Connect > Users and Access > Integrations > App Store Connect API):
 #   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the .p8 file contents), APPLE_TEAM_ID
 name: iOS to TestFlight
 on:
   push:
     tags: ['ios-*']
+    branches: [claude/project-thread-9p5ix3]
+    paths: [app/ios/RELEASE]
   workflow_dispatch:
 jobs:
   ios:
