@@ -27,16 +27,36 @@ window.CDVS=(()=>{
 
  // One match connection. Looks like the Claude room API the game already uses.
  function Match(){
-  const subs=new Set(),msgs=new Set(),outbox=[];let ws=null,me=null,token=null,code=null,mine={},list=[],closed=false,tries=0,pingT=0,pongAt=0,retryT=0,firstJoin=null;
+  const subs=new Set(),msgs=new Set();let ws=null,me=null,token=null,code=null,mine={},list=[],closed=false,tries=0,pingT=0,pongAt=0,retryT=0,firstJoin=null;
+  // Moves can't get lost: each one carries a number (_n) and stays in the log until the other
+  // phone acks it (_a). Anything not acked is sent again after a call, an app switch or a drop.
+  let ns=0,rx=0,log=[],held=new Map(),heldAt=0,rel=false,oppId=null,oppOn=true,relT=0;
   const self={code:null,
    presence(p){Object.assign(mine,p);put({t:'presence',p});return Promise.resolve()},
    onPeers(cb,err){const s={cb,err};subs.add(s);if(me)cb({peers:shape()});return()=>subs.delete(s)},
-   send(d){if(ws&&ws.readyState===1&&me)put({t:'msg',d});else if(outbox.length<60)outbox.push(d)},
+   send(d){const e={n:++ns,o:Object.assign({},d,{_n:ns}),at:0};log.push(e);if(log.length>400)log.shift();xmit(e)},
    onMsg(cb){msgs.add(cb);return()=>msgs.delete(cb)},
    leave(){closed=true;put({t:'leave'});finish();return Promise.resolve()}};
+  const live=()=>ws&&ws.readyState===1&&me;
+  function xmit(e){if(live()){put({t:'msg',d:e.o});e.at=Date.now()}}
+  function resend(all){log.forEach(e=>{if(!e.at||(all&&rel))xmit(e)})}
+  function ack(r){if(live())put({t:'msg',d:r?{_a:rx,_r:1}:{_a:rx}})}
+  function deliver(d){msgs.forEach(f=>{try{f(d)}catch(x){console.error(x)}})}
+  function inbound(d){if(!d||typeof d!=='object')return;
+   if(typeof d._a==='number'){rel=true;log=log.filter(e=>e.n>d._a);if(d._r)resend(true);return}
+   if(typeof d._n!=='number')return deliver(d); // older app on the other phone: plain moves
+   rel=true;
+   if(d._n<=rx)return ack();
+   if(d._n>rx+1){if(!held.size)heldAt=Date.now();held.set(d._n,d);return ack(true)}
+   rx=d._n;deliver(d);while(held.has(rx+1)){const h=held.get(rx+1);held.delete(rx+1);rx++;deliver(h)}
+   if(!held.size)heldAt=0;ack()}
+  // every second: send again whatever the other phone hasn't acked; give up on a gap after 5 s
+  function relTick(){if(!live())return;const now=Date.now();
+   if(rel&&oppOn&&log.some(e=>e.at&&now-e.at>2000))log.forEach(e=>{if(now-e.at>2000)xmit(e)});
+   if(heldAt&&now-heldAt>5000){[...held.keys()].sort((a,b)=>a-b).forEach(n=>{rx=n;deliver(held.get(n))});held.clear();heldAt=0;ack()}}
   function shape(){return list.map(x=>({id:x.id,isMe:x.id===me,sameTab:x.id===me,kind:'viewer',presence:x.online?x.p:Object.assign({},x.p,{away:true})}))}
   function put(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
-  function finish(){clearInterval(pingT);clearTimeout(retryT);toast('');if(ws){try{ws.close()}catch(e){}}ws=null}
+  function finish(){clearInterval(pingT);clearInterval(relT);clearTimeout(retryT);toast('');if(ws){try{ws.close()}catch(e){}}ws=null}
   function fail(text){finish();closed=true;toast(text,5000);subs.forEach(s=>s.err&&s.err(text))}
   function open(first){ws=new WebSocket(API.replace(/^http/,'ws')+'/vs');const sock=ws;
    sock.onopen=()=>{tries=0;pongAt=Date.now();sock.send(JSON.stringify(first()));clearInterval(pingT);
@@ -44,10 +64,10 @@ window.CDVS=(()=>{
    sock.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}pongAt=Date.now();
     if(m.t==='joined'){me=m.me;token=m.token;code=self.code=m.code;toast('');
      if(m.resumed&&Object.keys(mine).length)put({t:'presence',p:mine});
-     outbox.splice(0).forEach(d=>put({t:'msg',d}));
+     resend(m.resumed);if(m.resumed)ack(true);clearInterval(relT);relT=setInterval(relTick,1000);
      if(firstJoin){firstJoin.res(self);firstJoin=null}}
-    else if(m.t==='msg'){msgs.forEach(f=>{try{f(m.d)}catch(x){console.error(x)}})}
-    else if(m.t==='peers'){list=m.peers||[];const ch={peers:shape()};subs.forEach(s=>s.cb(ch))}
+    else if(m.t==='msg')inbound(m.d);
+    else if(m.t==='peers'){list=m.peers||[];peerSeen();const ch={peers:shape()};subs.forEach(s=>s.cb(ch))}
     else if(m.t==='error'){const why={no_room:'No game with that code. Check it with your friend.',full:'That game already has two players.',slow_down:'Too many tries. Wait a few minutes.'}[m.e]||'Could not join that game.';
      if(firstJoin){firstJoin.rej(Object.assign(new Error(why),{cdMsg:why}));firstJoin=null;closed=true;finish()}}
     else if(m.t==='gone'){toast('');fail('That game has ended.')}};
@@ -55,12 +75,23 @@ window.CDVS=(()=>{
     if(closed)return;
     if(firstJoin){firstJoin.rej(Object.assign(new Error('x'),{cdMsg:'Could not reach the game server. Check your internet and try again.'}));firstJoin=null;closed=true;return}
     retry()}}
+  // a new player took the other seat: start the move numbers over. The other phone came back: catch it up.
+  function peerSeen(){const o=list.find(x=>x.id!==me);if(!o)return;
+   if(oppId&&o.id!==oppId){ns=rx=0;log=[];held.clear();heldAt=0;rel=false}
+   const back=o.online&&!oppOn,hello=o.id!==oppId;oppId=o.id;oppOn=!!o.online;
+   if(back){resend(true);ack(true)}else if(hello)ack()} // the ack says hello: this phone re-sends lost moves
+  // phone call, app switch, screen off: tell the other phone, and on return check the line at once
+  function wake(){if(closed||!me)return;
+   if(ws&&ws.readyState===1&&Date.now()-pongAt<6000){put({t:'ping'});resend(true);ack(true);return}
+   if(ws){const s=ws;ws=null;try{s.close()}catch(e){}}tries=0;retry()}
   function retry(){if(closed||ws||!token)return;clearTimeout(retryT);toast('Reconnecting…');
    if(++tries>40)return fail('Lost the match connection.');
    retryT=setTimeout(()=>open(()=>({t:'resume',code,token})),Math.min(4000,400*tries))}
   addEventListener('online',()=>{tries=0;retry()});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'||closed)return;
-   if(ws&&ws.readyState===1){put({t:'ping'});return}tries=0;retry()});
+  document.addEventListener('visibilitychange',()=>{if(closed||!me)return;
+   if(document.visibilityState!=='visible'){self.presence({bg:true});return}
+   self.presence({bg:false});wake()});
+  addEventListener('pageshow',e=>{if(e.persisted)wake()});
   self.start=req=>new Promise((res,rej)=>{firstJoin={res,rej};open(()=>Object.assign({nick:(mine.nick||'')},req))});
   return self}
 
@@ -117,12 +148,24 @@ window.CDVS=(()=>{
    Each phone keeps its own G with G.top = "I'm batting". The batter's phone decides every
    result and sends it; the pitcher's phone shows the same pitch, swing and ball flight. */
 window.VS=(()=>{
- const T1={k:'STRUCK OUT',strike:'STRIKE',cstrike:'CALLED STRIKE',ball:'BALL',walk:'WALK',foul:'FOUL BALL',fly:'FLIED OUT',ground:'GROUNDED OUT',single:'SINGLE',double:'DOUBLE',triple:'TRIPLE',hr:'HOME RUN!'};
+ const T1={k:'STRUCK OUT',strike:'STRIKE',cstrike:'CALLED STRIKE',ball:'BALL',walk:'WALK',foul:'FOUL BALL',fly:'FLIED OUT',caught:'ROBBED!',ground:'GROUNDED OUT',single:'SINGLE',double:'DOUBLE',triple:'TRIPLE',hr:'HOME RUN!'};
  const CODE=Object.fromEntries(Object.entries(T1).map(([k,v])=>[v,k]));
  // what the pitcher's phone says for each result
  const PIT={k:['STRIKEOUT!','Sat him down','#5ee08a'],strike:['STRIKE','','#5ee08a'],cstrike:['CALLED STRIKE','Painted the corner','#5ee08a'],ball:['BALL','','#8e98be'],
-  walk:['WALK','Ball four','#ff5a5f'],foul:['FOUL BALL','','#ffb627'],fly:['FLY OUT','Can of corn','#5ee08a'],ground:['GROUND OUT','Infield handles it','#5ee08a'],
+  walk:['WALK','Ball four','#ff5a5f'],foul:['FOUL BALL','','#ffb627'],fly:['FLY OUT','Can of corn','#5ee08a'],caught:['CAUGHT!','Nice grab','#5ee08a'],ground:['GROUND OUT','Infield handles it','#5ee08a'],
   single:['SINGLE','','#ff5a5f'],double:['DOUBLE','','#ff5a5f'],triple:['TRIPLE','','#ff5a5f'],hr:['HOME RUN!','Gone!','#ff5a5f']};
+ // the fielder's phone gets the glove ring, same as Play Ball
+ const CATCH={foul:{dur:1600,win:16,pay:100,label:'Foul pop out',name:'FOUL POP',fail:'foul'},fly:{dur:1800,win:17,pay:100,label:'Can of corn',name:'FLY BALL',fail:'single'},
+  single:{dur:1300,win:14,pay:150,label:'Line-drive snag',name:'LINE DRIVE',fail:'single'},
+  double:{dur:1200,win:12,pay:250,label:'Diving catch',name:'GAP SHOT',fail:'double'},
+  triple:{dur:1150,win:12,pay:250,label:'Diving catch',name:'DOWN THE LINE',fail:'triple'},
+  hr:{dur:1000,win:10,pay:600,label:'Home run robbery',name:'AT THE WALL!',fail:'hr'}};
+ // Official team colors, the same on both phones: the player who made the game is Blue, the friend is Red.
+ const TEAM={blue:{jersey:'#1f3b8a',trim:'#ffb627',pants:'#ecebe4',helmet:'#14275e',socks:'#1f3b8a',letter:'B',name:'Blue',dot:'#4f8bff',label:'BLUE'},
+  red:{jersey:'#c22f2f',trim:'#f4efe2',pants:'#ecebe4',helmet:'#7d1d1d',socks:'#c22f2f',letter:'R',name:'Red',dot:'#ff5a5f',label:'RED'}};
+ const myTeam=host=>host?TEAM.blue:TEAM.red;
+ // uniform for the side that is batting (top = me batting) or fielding
+ const uni=top=>myTeam(top?v().host:!v().host);
  let bound=null,waitT=0;
  const v=()=>G.vs;
  const send=d=>{if(NET.mr&&NET.mr.send)NET.mr.send(Object.assign({g:v().g,h:v().half},d))};
@@ -135,7 +178,7 @@ window.VS=(()=>{
    ln:{you:lineup(),cpu:lineup()},bi:{you:0,cpu:0},fSkins:Array.from({length:8},()=>pick(SKINS)),pSkin:{you:pick(SKINS),cpu:pick(SKINS)},chase:null});
   buildField(LV());P=F=CT=null;floaters=[];
   [3,2,1].forEach((n,i)=>setTimeout(()=>{if(G.vs)banner(String(n),'vs '+G.vs.opp,'#ffd23f',900)},i*1000));
-  setTimeout(()=>{if(!G.vs||G.phase!=='countdown')return;banner('PLAY BALL!',G.top?'You bat first':'You pitch first','#5ee08a',1300);G.phase='wait';G.next=performance.now()+1300;ui()},3000);ui()}
+  setTimeout(()=>{if(!G.vs||G.phase!=='countdown')return;banner('PLAY BALL!',`You are ${myTeam(G.vs.host).label} · `+(G.top?'you bat first':'you pitch first'),myTeam(G.vs.host).dot,1500);G.phase='wait';G.next=performance.now()+1300;ui()},3000);ui()}
 
  function onMsg(d){const s=v();if(!s||!d||d.g!==s.g||d.h<s.half||G.phase==='over')return;s.q.push(d)}
 
@@ -146,17 +189,32 @@ window.VS=(()=>{
  function sw(){if(G.top)send({t:'sw'})}
  function hit(){if(!F)return;const f=F;send({t:'hit',f:{out:f.out,q:f.q,X0:f.X0,Z0:f.Z0,h0:f.h0,pw:f.pw,X1:f.X1,Z1:f.Z1,h1:f.h1,peak:f.peak,dur:f.dur}})}
  // batter: the pitch is decided, send the result and the new count
- function res(){const s=v();if(!s||!G.top)return;const k=CODE[G.banner&&G.banner.t1]||'strike';
+ function res(k0){const s=v();if(!s||!G.top)return;const k=k0||CODE[G.banner&&G.banner.t1]||'strike';
   send({t:'res',k,st:{b:G.balls|0,s:G.strikes|0,o:G.outs|0,bases:G.bases.map(x=>x?1:0),r:G.you|0},pa:G.balls===0&&G.strikes===0});
   if(G.outs<3)check()}
 
+ // batter: the ball came down. A catchable ball goes to the fielder's glove first.
+ function land(){const s=v(),o=F&&F.out;if(!s||!G.top||!CATCH[o]||(o==='single'&&Math.random()<.5)||(o==='foul'&&Math.random()>=.4))return false;
+  G.phase='vsCatch';s.ct={o,at:performance.now()};send({t:'ct',o});CDVS.toast(oppName()+' is going for the catch…');return true}
+ function landed(ok){const s=v(),c=s.ct;s.ct=null;CDVS.toast('');if(!c||G.phase!=='vsCatch')return;G.phase='settle';
+  if(ok){banner('ROBBED!','Caught by '+oppName(),'#ff5a5f');earn(-75,'Out',200,330);const k='caught';if(!addOut())nextPitch(1500);res(k);return}
+  F.out=CATCH[c.o].fail;batResult();res()}
+ // fielder: the ring was tapped (or missed)
+ function caught(ok){const s=v(),c=CT;send({t:'cr',ok:!!ok});if(ok&&c){G.cheerAt=performance.now();G.cheerTeam='you';earn(c.pay,c.label,200,300)}G.phase='settle';setTimeout(()=>{if(G.vs===s)CT=null},420)}
+
  function tick(now){const s=v();if(!s)return;
-  if(G.top&&G.phase==='wait'&&G.next===Infinity&&now-waitT>1400)CDVS.toast(oppName()+' is picking a pitch…');
+  const gone=NET.opp&&(NET.opp.away||NET.opp.bg); // keep the "lost connection / left the app" note up
+  if(!gone&&G.top&&G.phase==='wait'&&G.next===Infinity&&now-waitT>1400)CDVS.toast(oppName()+' is picking a pitch…');
+  if(G.top&&G.phase==='vsCatch'&&s.ct&&now-s.ct.at>7000)landed(s.ct.o==='fly'); // no answer: old rules
+  if(!gone&&!G.top&&G.phase==='pitch'&&P&&!P.hit&&now-P.start>P.dur+2500)CDVS.toast('Waiting for '+oppName()+'…');
   const m=s.q[0];if(!m)return;
   if(m.h>s.half)return; // next half inning: wait for our own switch
   if(m.t==='pitch'){if(!(G.top&&G.phase==='wait'&&G.next===Infinity))return;s.q.shift();CDVS.toast('');
    G.pend={k:PITCHES[m.k]?m.k:'fast',mph:+m.mph||80,tx:+m.tx,ty:+m.ty,cpu:true};G.phase='windup';G.relAt=now+650;ui();return}
-  if(G.top){s.q.shift();return}
+  if(G.top){s.q.shift();if(m.t==='cr')landed(m.ok);return}
+  if(m.t==='ct'){if(G.phase==='flight'||G.phase==='catch')return;s.q.shift();if(s.q.some(x=>x.t==='res'))return; // too late, the batter already moved on
+const sp=CATCH[m.o];if(!sp)return;
+   CT={...sp,win:sp.win*glove().mult,start:now,R0:190,T:46};G.phase='catch';ui();return}
   if(m.t==='sw'){if(!(G.phase==='pitch'&&P))return;s.q.shift();if(!P.swung){P.swung=true;G.swing={at:now,cAt:now+120,aimY:P.final.y,bx:P.final.x}}return}
   if(m.t==='hit'){if(!(G.phase==='pitch'&&P))return;s.q.shift();const f=m.f||{};
    const t=Math.min((now-P.start)/P.dur,1.05),pos=ballPos(P,t);
@@ -166,7 +224,7 @@ window.VS=(()=>{
    contactFX(pos.x,pos.y,f.out,F.q);if(f.out!=='foul')G.ba={mode:f.out==='hr'?'hr':'run',at:now+330,b:curBatter(),top:false};return}
   if(m.t==='res'){
    if(G.phase==='flight'||G.phase==='windup'||G.phase==='aim'||(G.phase==='pitch'&&P&&(now-P.start)/P.dur<1))return;
-   s.q.shift();apply(m);return}
+   s.q.shift();CT=null;if(/Waiting for/.test((document.getElementById('vsToast')||{}).textContent||''))CDVS.toast('');apply(m);return}
   s.q.shift()}
 
  // pitcher: show the batter's result and copy the count, bases and score
@@ -203,8 +261,22 @@ window.VS=(()=>{
  // the other player dropped or left mid-game
  function peers(opp){const s=G&&G.vs;if(!s||G.phase==='over')return;
   if(!opp)return over('left');
-  if(opp.presence&&opp.presence.away)CDVS.toast(oppName()+' lost connection. Waiting…');
-  else if(document.getElementById('vsToast')&&/lost connection/.test(document.getElementById('vsToast').textContent))CDVS.toast('')}
+  const p=opp.presence||{},el=document.getElementById('vsToast');
+  if(p.away)CDVS.toast(oppName()+' lost connection. Waiting…');
+  else if(p.bg)CDVS.toast(oppName()+' left the app for a moment. Waiting…');
+  else if(el&&/lost connection|left the app/.test(el.textContent))CDVS.toast('')}
+
+ // scoreboard: Blue on top, Red below, the same on both phones, with YOU on your own row
+ function board(){const rY=$('sYou')&&$('sYou').parentNode,rO=$('sCpu')&&$('sCpu').parentNode;if(!rY||!rO)return;
+  const dY=rY.querySelector('.dot'),s=G&&G.vs;
+  if(!s){if(rY.nextElementSibling!==rO)rY.parentNode.insertBefore(rY,rO);dY.style.background='';return}
+  const me=myTeam(s.host),op=myTeam(!s.host);
+  dY.style.background=me.dot;$('oppDot').style.background=op.dot;
+  rY.firstElementChild.lastChild.textContent='YOU';
+  if(s.host?rY.nextElementSibling!==rO:rO.nextElementSibling!==rY)s.host?rY.parentNode.insertBefore(rY,rO):rO.parentNode.insertBefore(rO,rY)}
+ // big screen in the outfield: Blue first on both phones
+ function jumbo(){const s=v(),b=s.host?['YOU',G.you]:[s.opp.toUpperCase().slice(0,8),G.cpu],r=s.host?[s.opp.toUpperCase().slice(0,8),G.cpu]:['YOU',G.you];
+  return `${b[0]} ${b[1]}  ·  ${r[0]} ${r[1]}`}
 
  // match screen: the host picks the game, both see it
  function modeRow(w){const gm=NET.host?(NET.gm||'ball'):((NET.peers.find(p=>p.presence&&p.presence.host)||{}).presence||{}).gm||'ball';
@@ -214,6 +286,10 @@ window.VS=(()=>{
   if(NET.host){row.innerHTML=`<button class="big ${gm==='ball'?'':'alt'}" data-gm="ball">Pitch &amp; Bat</button><button class="big ${gm==='derby'?'':'alt'}" data-gm="derby">HR Derby race</button>`;
    row.querySelectorAll('button').forEach(b=>b.onclick=()=>{NET.gm=b.dataset.gm;if(NET.mr)NET.mr.presence({gm:NET.gm}).catch(()=>{});renderOnline()})}
   else row.innerHTML=`<p class="onnote">Game: <b>${gm==='ball'?'Pitch &amp; Bat':'HR Derby race'}</b> (the host picks)</p>`;
-  w.appendChild(row)}
+  w.appendChild(row);
+  // players: Blue (made the game) on top, Red below, with (you) on your own line
+  const pl=w.querySelector('.onplayers');if(pl&&gm==='ball'){const r=pl.children,mine=r[0],theirs=r[1];
+   const tag=(el,t)=>{el.insertAdjacentHTML('afterbegin',`<i class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--ink,#1a1a2e);margin-right:6px;vertical-align:-1px;background:${t.dot}"></i><b style="color:${t.dot}">${t.label}</b> · `)};
+   tag(mine,myTeam(NET.host));tag(theirs,myTeam(!NET.host));if(!NET.host)pl.insertBefore(theirs,mine)}}
 
- return{start,batWait,pitch,sw,hit,res,tick,endHalf,over,peers,modeRow}})();
+ return{start,batWait,pitch,sw,hit,res,land,caught,tick,endHalf,over,peers,modeRow,uni,board,jumbo}})();
