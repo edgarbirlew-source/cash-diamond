@@ -68,7 +68,8 @@ window.CDVS=(()=>{
      if(firstJoin){firstJoin.res(self);firstJoin=null}}
     else if(m.t==='msg')inbound(m.d);
     else if(m.t==='peers'){list=m.peers||[];peerSeen();const ch={peers:shape()};subs.forEach(s=>s.cb(ch))}
-    else if(m.t==='error'){const why={no_room:'No game with that code. Check it with your friend.',full:'That game already has two players.',slow_down:'Too many tries. Wait a few minutes.'}[m.e]||'Could not join that game.';
+    else if(m.t==='error'){if(m.e==='is_tour'&&window.CDT)setTimeout(()=>CDT.open(code||req&&req.code),50);
+     const why={is_tour:'That is a tournament code. Opening the tournament…',no_room:'No game with that code. Check it with your friend.',full:'That game already has two players.',slow_down:'Too many tries. Wait a few minutes.'}[m.e]||'Could not join that game.';
      if(firstJoin){firstJoin.rej(Object.assign(new Error(why),{cdMsg:why}));firstJoin=null;closed=true;finish()}}
     else if(m.t==='gone'){toast('');fail('That game has ended.')}};
    sock.onclose=()=>{if(sock!==ws)return;clearInterval(pingT);ws=null;
@@ -92,14 +93,17 @@ window.CDVS=(()=>{
    if(document.visibilityState!=='visible'){self.presence({bg:true});return}
    self.presence({bg:false});wake()});
   addEventListener('pageshow',e=>{if(e.persisted)wake()});
-  self.start=req=>new Promise((res,rej)=>{firstJoin={res,rej};open(()=>Object.assign({nick:(mine.nick||'')},req))});
+  let req=null;
+  self.start=r=>new Promise((res,rej)=>{req=r;if(r.t==='resume'){code=r.code;token=r.token}firstJoin={res,rej};open(()=>Object.assign({nick:(mine.nick||'')},r))});
   return self}
 
  const room={
   onPeers(){return()=>{}},peers(){return[]},presence(){return Promise.resolve()},
   join(name){const want=String(name).replace(/^hrd-/,'').toUpperCase(),m=Match();
    const n=(()=>{try{return localStorage.getItem('cd_nick')||''}catch(e){return''}})();
+   const tk=ticket;if(tk&&tk.code===want)return m.start({t:'resume',code:tk.code,token:tk.token}); // a tournament seat
    return m.start(want==='NEW'?{t:'create',nick:n}:{t:'join',code:want,nick:n})}};
+ let ticket=null;
 
  // Lobby: your name, Create game, or paste a code and Join. No list of open games.
  function lobby(box){const pre=pending;pending='';
@@ -108,7 +112,10 @@ window.CDVS=(()=>{
 <div class="oncol"><button class="big" id="vsMake">Create game</button><p class="onnote">You get a code to send to someone you know. Games are private: only people with the code can join.</p></div>
 <div class="vsor">or join a friend's game</div>
 <div class="oncol"><div class="vsjoin"><input id="codeIn" maxlength="40" placeholder="PASTE CODE" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${esc(pre)}"><button class="big alt" id="vsPaste">Paste</button></div>
-<button class="big" id="jnMatch">Join game</button></div>`;
+<button class="big" id="jnMatch">Join game</button></div>
+<div class="vsor">or play a whole group</div>
+<div class="oncol"><button class="big" id="vsTour" style="background:#3fae5a;color:#fff;text-shadow:0 2px 0 var(--ink)">🏆 Tournament</button><p class="onnote">Lots of players, one code, a bracket until one champion is left.</p></div>`;
+  $('vsTour').onclick=()=>{nm();if(window.CDT)CDT.open()};
   const nm=()=>{const v=$('nickIn').value.trim();try{localStorage.setItem('cd_nick',v)}catch(e){}return v};
   $('nickIn').oninput=nm;
   if(!navigator.clipboard||!navigator.clipboard.readText)$('vsPaste').hidden=true;
@@ -142,7 +149,7 @@ window.CDVS=(()=>{
   if(c){pending=c;q.delete('vs');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash);
    addEventListener('load',()=>setTimeout(()=>{if($('online').hidden)openOnline()},300))}}catch(e){}
 
- return{room:()=>room,lobby,shareRow,parse,toast}})();
+ return{room:()=>room,lobby,shareRow,parse,toast,copy,api:API,setTicket:t=>{ticket=t}}})();
 
 /* ---- Online Vs live game: one phone pitches, the other bats, swap every half inning ----
    Each phone keeps its own G with G.top = "I'm batting". The batter's phone decides every
@@ -171,7 +178,7 @@ window.VS=(()=>{
  const send=d=>{if(NET.mr&&NET.mr.send)NET.mr.send(Object.assign({g:v().g,h:v().half},d))};
  const oppName=()=>((NET.opp&&NET.opp.nick)||'Rival').slice(0,14);
 
- function start(seed){$('online').hidden=true;$('title').hidden=true;
+ function start(seed){$('online').hidden=true;$('title').hidden=true;if(window.CDT)CDT.hide();
   if(bound!==NET.mr){bound=NET.mr;NET.mr.onMsg(onMsg)}
   const now=performance.now();
   G=Object.assign(castOf(),{mode:'game',online:true,vs:{host:!!NET.host,half:0,g:seed&0xffffff,opp:oppName(),q:[]},phase:'countdown',next:now+3200,inning:1,top:!!NET.host,you:0,cpu:0,outs:0,balls:0,strikes:0,bases:[0,0,0],innings:3,banner:null,swing:null,
@@ -252,11 +259,13 @@ const sp=CATCH[m.o];if(!sp)return;
    G.outs=0;resetCount();G.bases=[0,0,0];G.moves=[];G.ba=null;G.bc=[null,null,null];nextPitch(600)},1800)}
 
  function over(why){const s=v();if(!s||G.phase==='over')return;G.phase='over';P=F=CT=null;CDVS.toast('');
-  const left=why==='left',win=left||G.you>G.cpu,tie=!left&&G.you===G.cpu;
+  // why: 'left' = the other player left (you win), 'lost' = the tournament gave the match to the other player
+  const lost=why==='lost',left=why==='left',win=!lost&&(left||G.you>G.cpu),tie=!left&&!lost&&G.you===G.cpu;
   if(win&&!tie){S.wins++;earn(2000,'Online win',200,300);fireworks(5)}else save();
-  banner(left?'YOU WIN!':tie?'TIE GAME':win?'YOU WIN!':s.opp.toUpperCase().slice(0,10)+' WINS',left?s.opp+' left the game':`${G.you}–${G.cpu}`,win?'#5ee08a':'#ff5a5f',2400);
+  banner(left?'YOU WIN!':lost?'MATCH OVER':tie?'TIE GAME':win?'YOU WIN!':s.opp.toUpperCase().slice(0,10)+' WINS',left?s.opp+' left the game':lost?'You were away too long':`${G.you}–${G.cpu}`,win?'#5ee08a':'#ff5a5f',2400);
   NET.started=false;if(NET.mr)NET.mr.presence({ready:false,go:null,playing:false}).catch(()=>{});
-  const gg=G;setTimeout(()=>{if(G!==gg)return;showOverlay(left?'You Win!':tie?'Tie Game!':win?'You Win!':'You Lost',left?`${s.opp} left the game. You win ${G.you}–${G.cpu}.`:`You ${G.you} – ${G.cpu} ${s.opp}. Tap Online Vs to play again.`,false,'online')},2600);ui()}
+  const tour=window.CDT&&CDT.report(G.you,G.cpu,left,lost);
+  const gg=G;setTimeout(()=>{if(G!==gg)return;if(tour)return CDT.show();showOverlay(left?'You Win!':tie?'Tie Game!':win?'You Win!':'You Lost',left?`${s.opp} left the game. You win ${G.you}–${G.cpu}.`:`You ${G.you} – ${G.cpu} ${s.opp}. Tap Online Vs to play again.`,false,'online')},2600);ui()}
 
  // the other player dropped or left mid-game
  function peers(opp){const s=G&&G.vs;if(!s||G.phase==='over')return;
