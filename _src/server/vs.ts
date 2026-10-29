@@ -8,7 +8,7 @@ const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 // store apps: Android serves the game from https://edgarbirlew-source.github.io (capacitor.config server.hostname),
 // iOS from capacitor://edgarbirlew-source.github.io
 const ORIGINS = ['https://edgarbirlew-source.github.io', 'capacitor://edgarbirlew-source.github.io', 'http://localhost:8099'];
-const GRACE = 120_000;        // a dropped player keeps their seat this long
+const GRACE = 15 * 60_000;    // a dropped player keeps their seat this long (long enough for a phone call)
 const ROOM_MAX = 3 * 3600_000; // rooms close after 3 hours no matter what
 
 type Peer = { id: string; token: string; p: Record<string, unknown>; ws: any; timer?: Timer; inbox: unknown[] };
@@ -124,7 +124,7 @@ Bun.serve({
         case 'msg': {
           if (!r || !me) return;
           const d = { t: 'msg', d: move(m.d) };
-          for (const x of r.peers.values()) if (x !== me) { if (x.ws) send(x.ws, d); else if (x.inbox.length < 60) x.inbox.push(d) }
+          for (const x of r.peers.values()) if (x !== me) { if (x.ws) send(x.ws, d); else if (x.inbox.length < 200) x.inbox.push(d) }
           return;
         }
         case 'leave': {

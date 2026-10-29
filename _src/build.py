@@ -84,8 +84,11 @@ VS_PATCHES = [
   ("function endHalf(){\n", "function endHalf(){if(G.vs)return VS.endHalf();\n"),
   ("function gameOver(){const win=", "function gameOver(){if(G.vs)return VS.over();const win="),
   ("${G.top?'TOP':'BOT'} ${G.inning}", "${(G.vs?G.vs.half%2===0:G.top)?'TOP':'BOT'} ${G.inning}"),
-  ("${L.abbr} ${G.cpu}", "${G.vs?G.vs.opp.toUpperCase():L.abbr} ${G.cpu}"),
   ("$('oppAbbr').textContent=L.abbr;", "$('oppAbbr').textContent=G.vs?G.vs.opp.slice(0,4).toUpperCase():L.abbr;"),
+  # one official uniform per player, same on both phones: game maker Blue, friend Red
+  ("const uniOf=top=>top?YOU_UNI:LV().uni;", "const uniOf=top=>G&&G.vs&&window.VS?VS.uni(top):top?YOU_UNI:LV().uni;"),
+  ("$('oppDot').style.background=L.uni.jersey==='#e9e6dc'?L.uni.trim:L.uni.jersey;", "$('oppDot').style.background=L.uni.jersey==='#e9e6dc'?L.uni.trim:L.uni.jersey;if(window.VS)VS.board();"),
+  ("X.fillText(live?`YOU ${G.you}  ·  ${L.abbr} ${G.cpu}`", "X.fillText(live?G.vs?VS.jumbo():`YOU ${G.you}  ·  ${L.abbr} ${G.cpu}`"),
   ("(G.top?'▲':'▼')+G.inning", "((G.vs?G.vs.half%2===0:G.top)?'▲':'▼')+G.inning"),
   ("$('msg').innerHTML=cb?(G.top?", "$('msg').innerHTML=cb&&G.vs?(G.top?'Your turn to bat · hold, slide, release':'Pitching to <b>'+G.vs.opp.replace(/[<>&]/g,'')+'</b> · pick a pitch, tap the zone'):cb?(G.top?"),
   ("der?(G.online?'Online Derby':'HR Derby'):L.tier", "der?(G.online?'Online Derby':'HR Derby'):G.vs?'Online Game':L.tier"),
