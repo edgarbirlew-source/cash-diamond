@@ -33,10 +33,17 @@ jobs:
           P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p ~/private_keys
-          # Pasted from Windows Notepad: drop carriage returns, and rebuild the PEM lines if they were flattened
-          body=$(printf '%s' "$P8" | tr -d '\r' | sed -e 's/-----[A-Z ]*-----//g' | tr -d ' \n\t')
+          # Pasted from Windows Notepad: drop carriage returns; if more than one key block was pasted, keep the first
+          clean=$(printf '%s' "$P8" | tr -d '\r')
+          echo "BEGIN markers: $(printf '%s' "$clean" | grep -c 'BEGIN PRIVATE KEY' || true)"
+          if printf '%s' "$clean" | grep -q 'BEGIN PRIVATE KEY'; then
+            body=$(printf '%s\n' "$clean" | awk '/BEGIN PRIVATE KEY/{f=1;next} /END PRIVATE KEY/{if(f)exit} f' | tr -d ' \n\t')
+          else
+            body=$(printf '%s' "$clean" | tr -d ' \n\t')
+          fi
           { echo '-----BEGIN PRIVATE KEY-----'; echo "$body" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
-          echo "key body chars: ${#body}, key lines: $(wc -l < ~/private_keys/AuthKey_$ASC_KEY_ID.p8), issuer set: $([ -n "$ASC_ISSUER_ID" ] && echo yes || echo no)"
+          echo "key body chars: ${#body} (a real key has 200), issuer set: $([ -n "$ASC_ISSUER_ID" ] && echo yes || echo no)"
+          openssl pkey -in ~/private_keys/AuthKey_$ASC_KEY_ID.p8 -noout && echo "key parses OK"
       - name: Archive
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
