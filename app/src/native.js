@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
 import { StatusBar } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Share } from '@capacitor/share';
 
 const ID = 'cashdiamond_full_game';
 const T = PURCHASE_TYPE.INAPP;
@@ -29,6 +30,9 @@ window.CDN = {
     return this.owned();
   },
 };
+
+// Online Vs "Share invite link" uses Capacitor.Plugins.Share when the WebView has no navigator.share
+if (window.CDN.native && window.Capacitor) (window.Capacitor.Plugins = window.Capacitor.Plugins || {}).Share = Share;
 
 if (window.CDN.native) {
   StatusBar.hide().catch(() => {});

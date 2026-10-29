@@ -3,10 +3,25 @@
   "appName": "Cash Diamond",
   "webDir": "www",
   "backgroundColor": "#1d4fa3",
-  "android": { "backgroundColor": "#1d4fa3" },
-  "ios": { "backgroundColor": "#1d4fa3", "contentInset": "never" },
+  "android": {
+    "backgroundColor": "#1d4fa3"
+  },
+  "ios": {
+    "backgroundColor": "#1d4fa3",
+    "contentInset": "never"
+  },
   "plugins": {
-    "SplashScreen": { "launchAutoHide": false, "backgroundColor": "#1d4fa3", "showSpinner": false },
-    "StatusBar": { "overlaysWebView": true }
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#1d4fa3",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "overlaysWebView": true
+    }
+  },
+  "server": {
+    "hostname": "edgarbirlew-source.github.io",
+    "androidScheme": "https"
   }
 }
