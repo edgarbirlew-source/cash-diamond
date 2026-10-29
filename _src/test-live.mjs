@@ -47,8 +47,8 @@ async function onePitch(i, swing) {
   await bat.waitForFunction(() => G.phase === 'pitch' && P, null, { timeout: 8000 });
   if (i === 2) await bat.screenshot({ path: shots + '/live-3-batter-pitch.png' });
   if (swing) { await bat.waitForFunction(() => P && (performance.now() - P.start) / P.dur > .93, null, { timeout: 5000 }); await bat.evaluate(() => userSwing(0, 0, true)) }
-  await bat.waitForFunction(() => !['windup', 'pitch', 'flight', 'settle'].includes(G.phase), null, { timeout: 10000 });
-  await pit.waitForFunction(() => !['windup', 'pitch', 'flight', 'settle'].includes(G.phase), null, { timeout: 10000 });
+  await bat.waitForFunction(() => !['windup', 'pitch', 'flight', 'settle', 'catch', 'vsCatch'].includes(G.phase), null, { timeout: 10000 });
+  await pit.waitForFunction(() => !['windup', 'pitch', 'flight', 'settle', 'catch', 'vsCatch'].includes(G.phase), null, { timeout: 10000 });
   await wait(150);
   const a = await state(bat), c = await state(pit);
   const ok = a.b === c.b && a.s === c.s && a.o === c.o && a.you === c.cpu && a.bases === c.bases;
