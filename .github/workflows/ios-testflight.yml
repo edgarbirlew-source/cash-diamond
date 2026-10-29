@@ -1,0 +1,79 @@
+# Builds the iOS app on GitHub's Mac and uploads it to TestFlight (no Mac needed at BIRCO).
+# Run it by hand (Actions > "iOS to TestFlight" > Run workflow), by pushing a tag like ios-1.0.0-2,
+# or by changing app/ios/RELEASE on the store apps branch.
+# Needs the repository secret ASC_KEY_P8 (the .p8 file contents of App Store Connect API key 4ZW5742DZ8).
+# Key id, issuer id and team id are set below (repository variables can override them).
+name: iOS to TestFlight
+on:
+  push:
+    tags: ['ios-*']
+    branches: [claude/project-thread-9p5ix3]
+    paths: [app/ios/RELEASE]
+  workflow_dispatch:
+jobs:
+  ios:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # Key, issuer and team ids are not secret (only the .p8 is). Key 4ZW5742DZ8 is the Admin key ('Cash Diamond CI') whose .p8 is in ASC_KEY_P8.
+      ASC_KEY_ID: ${{ vars.ASC_KEY_ID || '4ZW5742DZ8' }}
+      ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID || '0327ee2c-9dea-4997-a752-35c5ebbb6162' }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '4Y9KCBG4Y8' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Newest Xcode (App Store uploads need a current SDK)
+        run: |
+          x=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$x"
+          xcodebuild -version
+      - run: npm ci
+      - run: npm run build && npx cap sync ios
+      - name: API key
+        env:
+          P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/private_keys
+          # Pasted from Windows Notepad: drop carriage returns; if more than one key block was pasted, keep the first
+          clean=$(printf '%s' "$P8" | tr -d '\r')
+          echo "BEGIN markers: $(printf '%s' "$clean" | grep -c 'BEGIN PRIVATE KEY' || true)"
+          if printf '%s' "$clean" | grep -q 'BEGIN PRIVATE KEY'; then
+            body=$(printf '%s\n' "$clean" | awk '/BEGIN PRIVATE KEY/{f=1;next} /END PRIVATE KEY/{if(f)exit} f' | tr -d ' \n\t')
+          else
+            body=$(printf '%s' "$clean" | tr -d ' \n\t')
+          fi
+          { echo '-----BEGIN PRIVATE KEY-----'; echo "$body" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          echo "key body chars: ${#body} (a real key has 200), issuer set: $([ -n "$ASC_ISSUER_ID" ] && echo yes || echo no)"
+          openssl pkey -in ~/private_keys/AuthKey_$ASC_KEY_ID.p8 -noout && echo "key parses OK"
+      - name: Check the API key with Apple
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography || pip3 install --quiet pyjwt cryptography
+          python3 ios/asc-check.py
+      - name: Archive
+        # Built unsigned: the account is at its certificate limit, so signing happens in the export step
+        # with Apple's cloud-managed distribution certificate, which needs no new certificate.
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath $RUNNER_TEMP/App.xcarchive \
+            DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} archive
+      - name: Upload to TestFlight
+        run: |
+          cat > $RUNNER_TEMP/export.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath $RUNNER_TEMP/App.xcarchive -exportOptionsPlist $RUNNER_TEMP/export.plist \
+            -exportPath $RUNNER_TEMP/out -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_$ASC_KEY_ID.p8 \
+            -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID

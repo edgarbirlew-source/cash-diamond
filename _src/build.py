@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Turn the single-file Cash Diamond artifact into an installable web app in dist/."""
+"""Turn the single-file Cash Diamond artifact into an installable web app in dist/.
+
+With --store it builds the Android / iOS app version in dist-store/ instead: no service
+worker or install button, and the Full Game is sold through Apple / Google (app/src/native.js).
+"""
 import re, sys, pathlib
 
-src = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'v21.html').read_text()
-VERSION = sys.argv[2] if len(sys.argv) > 2 else 'v21'
+STORE = '--store' in sys.argv
+args = [a for a in sys.argv[1:] if a != '--store']
+src = pathlib.Path(args[0] if args else 'v21.html').read_text()
+VERSION = args[1] if len(args) > 1 else 'v21'
+WEB_URL = 'https://edgarbirlew-source.github.io/cash-diamond/'
 CLAUDE_LINK = 'https://claude.ai/artifact/KiT4WVL5SpJTVN3nCQtmyg'
 
 first, rest = src.split('\n', 1)
@@ -23,6 +30,9 @@ head = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 {reset}</head><body>'''
+if STORE:
+  head = re.sub(r'<link rel="(manifest|icon|apple-touch-icon)"[^>]*>\n|<meta name="(mobile-web-app-capable|apple-mobile-web-app-[a-z-]+)"[^>]*>\n', '', head)
+  head = head.replace('</head>', '<script>window.CD_STORE=1</script><script src="native.js"></script>\n</head>')
 
 # Online Vs uses Claude's live rooms, which only exist on the Claude link.
 old_msg = "Online play needs you signed in to Claude, and the game shared with the person you want to play. Open it from the Claude app and try again."
@@ -87,6 +97,10 @@ for a, b in VS_PATCHES:
   assert rest.count(a) == 1, 'vs patch anchor not found once: ' + a[:50]
   rest = rest.replace(a, b)
 vs = (here / 'vs.js').read_text().replace('__CD_VS__', CD_VS)
+if STORE:  # share links from the app point at the public web address
+  a = "const link=code=>location.origin+location.pathname+'?vs='+code;"
+  assert vs.count(a) == 1
+  vs = vs.replace(a, f"const link=code=>'{WEB_URL}?vs='+code;")
 assert rest.count('</body></html>') == 1
 rest = rest.replace('</body></html>', '<script>\n' + vs + '</script>\n</body></html>')
 
@@ -101,11 +115,39 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
  addEventListener('appinstalled',()=>{{b.hidden=true}});}})();
 </script>
 '''
-assert rest.rstrip().endswith('</body></html>')
-rest = rest.rstrip()[:-len('</body></html>')] + app_js + '</body></html>\n'
+# Full Game: free tier, inning-break card and the $3.99 Stripe unlock (web app only).
+CD_API = 'https://unlock-production-90f0.up.railway.app'
+CD_PAY = ''  # the BIRCO Stripe Payment Link (https://buy.stripe.com/...); empty = "opens soon"
+PATCHES = [
+  ("b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};lv.appendChild(b)});",
+   "b.onclick=()=>{S.cur=i;save();buildField(LV());ui()};if(window.CD)CD.dress('lg',i,b);lv.appendChild(b)});"),
+  ("b.onclick=()=>{$('title').hidden=true;newDerby({dlv:i})};box.appendChild(b)}}",
+   "b.onclick=()=>{$('title').hidden=true;newDerby({dlv:i})};if(window.CD)CD.dress('dv',i,b);box.appendChild(b)}}"),
+  ("b.onclick=()=>{$('title').hidden=true;newPitchStage(i)};box.appendChild(b)}}",
+   "b.onclick=()=>{$('title').hidden=true;newPitchStage(i)};if(window.CD)CD.dress('pc',i,b);box.appendChild(b)}}"),
+  ("function newGame(){", "function newGame(){if(window.CD&&CD.stop('lg',S.cur))return;"),
+  ("function newDerby(opts){opts=opts||{};", "function newDerby(opts){opts=opts||{};if(window.CD&&!opts.online&&CD.stop('dv',opts.dlv??0))return;"),
+  ("function newPitchStage(si){", "function newPitchStage(si){if(window.CD&&CD.stop('pc',si))return;"),
+  ("if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){",
+   "if(window.CD&&S.cur>=S.unlocked&&CD.wall('lg',S.unlocked+1))CD.beat('lg');else if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){"),
+  ("G.you!==G.cpu){gameOver();return}\n G.phase='switch';banner('SIDE RETIRED'",
+   "G.you!==G.cpu){gameOver();return}\n if(window.CD&&G.mode==='game'&&!G.online&&!G.top&&G.inning===1&&!G.cdB){G.cdB=1;const gb=G;if(CD.brk(()=>{paused=false;if(G===gb)endHalf()})){G.phase='switch';return}}G.phase='switch';banner('SIDE RETIRED'"),
+]
+for a, b in PATCHES:
+  assert rest.count(a) == 1, 'patch anchor not found once: ' + a[:50]
+  rest = rest.replace(a, b)
+fg = (here / 'fullgame.js').read_text().replace('__CD_API__', CD_API).replace('__CD_PAY__', CD_PAY)
+anchor = '<script>\n// ================= catalog'
+assert rest.count(anchor) == 1
+rest = rest.replace(anchor, '<script>\n' + fg + '</script>\n' + anchor)
 
-out = pathlib.Path('dist'); out.mkdir(exist_ok=True)
+assert rest.rstrip().endswith('</body></html>')
+rest = rest.rstrip()[:-len('</body></html>')] + ('' if STORE else app_js) + '</body></html>\n'
+
+out = pathlib.Path('dist-store' if STORE else 'dist'); out.mkdir(exist_ok=True)
 (out / 'index.html').write_text(head + '\n' + rest)
+if STORE:
+  print('built store', VERSION, len(head + rest), 'bytes'); sys.exit()
 sw = (here / 'sw.template.js').read_text().replace('__VERSION__', VERSION)
 (out / 'sw.js').write_text(sw)
 print('built', VERSION, len(head + rest), 'bytes')

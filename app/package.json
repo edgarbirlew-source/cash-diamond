@@ -1,0 +1,24 @@
+{
+  "name": "cash-diamond-app",
+  "private": true,
+  "version": "1.1.0",
+  "description": "Cash Diamond Baseball store apps (Android and iOS) for BIRCO, Inc.",
+  "scripts": {
+    "build": "python3 ../_src/build.py ../_src/v21.html store-1.1.0 --store && node build-native.mjs",
+    "sync": "npm run build && npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@capgo/native-purchases": "8.9.6"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
+    "esbuild": "0.25.10"
+  }
+}
