@@ -82,11 +82,15 @@ VS_PATCHES = [
   ("(G.top?'▲':'▼')+G.inning", "((G.vs?G.vs.half%2===0:G.top)?'▲':'▼')+G.inning"),
   ("$('msg').innerHTML=cb?(G.top?", "$('msg').innerHTML=cb&&G.vs?(G.top?'Your turn to bat · hold, slide, release':'Pitching to <b>'+G.vs.opp.replace(/[<>&]/g,'')+'</b> · pick a pitch, tap the zone'):cb?(G.top?"),
   ("der?(G.online?'Online Derby':'HR Derby'):L.tier", "der?(G.online?'Online Derby':'HR Derby'):G.vs?'Online Game':L.tier"),
+  # a reload during an online game must not drop you into a solo game (tournaments bring you back to the bracket)
+  ("else if(d.mode==='game')newGame()}", "else if(d.mode==='game'&&!d.online)newGame()}"),
+  ("$('menuBtn').hidden=!inGame||!$('title').hidden;", "$('menuBtn').hidden=!inGame||!$('title').hidden||!!(window.CDT&&!$('tour').hidden);"),
 ]
 for a, b in VS_PATCHES:
   assert rest.count(a) == 1, 'vs patch anchor not found once: ' + a[:50]
   rest = rest.replace(a, b)
 vs = (here / 'vs.js').read_text().replace('__CD_VS__', CD_VS)
+vs += '\n' + (here / 'tour.js').read_text()  # tournaments (bracket on the same server)
 assert rest.count('</body></html>') == 1
 rest = rest.replace('</body></html>', '<script>\n' + vs + '</script>\n</body></html>')
 
