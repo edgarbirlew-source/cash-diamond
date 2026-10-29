@@ -49,6 +49,10 @@ jobs:
           { echo '-----BEGIN PRIVATE KEY-----'; echo "$body" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
           echo "key body chars: ${#body} (a real key has 200), issuer set: $([ -n "$ASC_ISSUER_ID" ] && echo yes || echo no)"
           openssl pkey -in ~/private_keys/AuthKey_$ASC_KEY_ID.p8 -noout && echo "key parses OK"
+      - name: Check the API key with Apple
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography || pip3 install --quiet pyjwt cryptography
+          python3 ios/asc-check.py
       - name: Archive
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
