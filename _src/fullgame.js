@@ -38,8 +38,8 @@ window.CD=(()=>{
   const q=s=>sheet.querySelector(s);(q('[data-x]')||{}).onclick=close;wire&&wire(q)}
 
  function offer(kind,head,after){
-  if(full()&&STORE){show(`<h2>Full Game</h2><p>Every league and level is unlocked. Thanks for supporting Cash Diamond!</p><p style="font-size:14px">New phone? Sign in to the same ${CDN.store} account and tap Restore purchase.</p><button class="big" data-x>Back</button>`,null,after);return}
-  if(full()){show(`<h2>Full Game</h2><p>Every league and level is unlocked on this phone.</p><p>Your unlock code:</p><div class="cdcode">${JSON.parse(get('cd_full')).code}</div><p style="font-size:14px">Type it on another phone or browser to unlock it there too.</p><button class="big" data-x>Back</button>`,null,after);return}
+  if(full()&&STORE){show(`<h2>Full Game</h2><p>Nothing is locked behind a paywall. Win games to reach every league and level. Thanks for supporting Cash Diamond!</p><p style="font-size:14px">New phone? Sign in to the same ${CDN.store} account and tap Restore purchase.</p><button class="big" data-x>Back</button>`,null,after);return}
+  if(full()){show(`<h2>Full Game</h2><p>Nothing is locked behind a paywall on this phone. Win games to reach every league and level.</p><p>Your unlock code:</p><div class="cdcode">${JSON.parse(get('cd_full')).code}</div><p style="font-size:14px">Type it on another phone or browser to unlock it there too.</p><button class="big" data-x>Back</button>`,null,after);return}
   show(`<h2>${head||'Get the Full Game'}</h2>
 <ul><li>All 7 leagues, up to the World Series</li><li>Every HR Derby and Legend level</li><li>Every Pitch Challenge stage and Pro tier</li><li>No break cards, ever</li></ul>
 ${kind?`<p style="font-size:14px">Locked in the free game: ${NAMES[kind]}.</p>`:''}
@@ -80,8 +80,8 @@ ${STORE?'<button class="cdlink" data-restore>Restore purchase</button>':'<button
    show(`<h2>Nothing to restore</h2><p>We didn’t find a Full Game purchase on this ${CDN.store} account.</p><button class="big" data-x>OK</button>`,null,after)}
   catch(e){show(`<h2>Can’t check right now</h2><p>Make sure you’re online and signed in to ${CDN.store}, then try again.</p><button class="big" data-x>OK</button>`,null,after)}}
  function done(after){const c=JSON.parse(get('cd_full')).code;
-  if(c==='store'){show(`<h2>Full Game unlocked!</h2><p>Every league and level is open. Thanks for supporting Cash Diamond!</p><button class="big" data-x>Play ball!</button>`,null,after);return}
-  show(`<h2>Full Game unlocked!</h2><p>Every league and level is open. Thanks for supporting Cash Diamond!</p><p>Your unlock code:</p><div class="cdcode">${c}</div><p style="font-size:14px">Write it down. Type it on another phone or browser to unlock it there too.</p><button class="big" data-x>Play ball!</button>`,null,after)}
+  if(c==='store'){show(`<h2>Full Game unlocked!</h2><p>Win games to reach every league and level. Thanks for supporting Cash Diamond!</p><button class="big" data-x>Play ball!</button>`,null,after);return}
+  show(`<h2>Full Game unlocked!</h2><p>Win games to reach every league and level. Thanks for supporting Cash Diamond!</p><p>Your unlock code:</p><div class="cdcode">${c}</div><p style="font-size:14px">Write it down. Type it on another phone or browser to unlock it there too.</p><button class="big" data-x>Play ball!</button>`,null,after)}
 
  async function verify(session,quiet){
   if(!quiet)show(`<h2>Unlocking…</h2><p>Checking your payment with Stripe.</p>`);
