@@ -1,0 +1,11 @@
+1. Screen recording: attached to this submission (cash-diamond-review-recording.mp4), recorded on a physical iPhone with build 13 (1.1.0). It opens the app from TestFlight, plays a game, opens the Full Game offer (with the Restore Purchase button), passes the grown-up check, buys the Full Game ($3.99, sandbox) and shows "Full Game unlocked!".
+
+2. Purpose and audience: Cash Diamond is a cartoon baseball game for all ages (rated 4+). Players bat against pitches, earn pretend in-game cash, and spend it on better bats and gloves while moving through leagues. It gives quick, fun baseball rounds that work well on a phone.
+
+3. How to use it: No account, login or sample files are needed. Open the app and tap Play to start batting. The first three leagues are free. Tap any locked league, Derby level or Pitch stage (or Full Game on the title screen) to see the Full Game offer (non-consumable in-app purchase cashdiamond_full_game, $3.99). Buying is behind a grown-up check (a multiplication question). Restore Purchase is on the same screen. Online Vs needs two devices: on one, open Online Vs and tap Create game to get a 6-letter code; enter that code on the other device and tap Join.
+
+4. External services: Apple In-App Purchase (StoreKit) for the Full Game unlock. A small game server we run (on Railway) only relays moves between two players in Online Vs; it stores nothing and needs no account. No analytics, ads, login services or AI services are used.
+
+5. Regions: The app works the same in every region. There is no user-generated content, chat or account creation.
+
+6. Not applicable: not a regulated industry and no third-party protected material.
