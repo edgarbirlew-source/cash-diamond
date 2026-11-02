@@ -3,7 +3,7 @@
 import os, time, json, urllib.request, jwt
 kid, iss = os.environ['ASC_KEY_ID'], os.environ['ASC_ISSUER_ID']
 GROUP = 'b1580e65-e710-4b00-805f-bfe67d7490d9'
-limit = int(''.join(c for c in open('ios/PUBLIC_LINK').readline() if c.isdigit()) or 0)
+limit = int(open('ios/PUBLIC_LINK').readline().split('#')[0].strip() or 0)
 key = open(os.path.expanduser(f'~/private_keys/AuthKey_{kid}.p8')).read()
 def call(method, path, body=None):
     tok = jwt.encode({'iss': iss, 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid})
