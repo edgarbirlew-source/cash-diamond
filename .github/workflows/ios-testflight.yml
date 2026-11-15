@@ -7,7 +7,7 @@ name: iOS to TestFlight
 on:
   push:
     tags: ['ios-*']
-    branches: [claude/project-thread-9p5ix3]
+    branches: [main, claude/project-thread-9p5ix3]
     paths: [app/ios/RELEASE]
   workflow_dispatch:
 jobs:

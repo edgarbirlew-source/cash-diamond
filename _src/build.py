@@ -139,16 +139,43 @@ PATCHES = [
   ("function newPitchStage(si){", "function newPitchStage(si){if(window.CD&&CD.stop('pc',si))return;"),
   ("if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){",
    "if(window.CD&&S.cur>=S.unlocked&&CD.wall('lg',S.unlocked+1))CD.beat('lg');else if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){"),
-  ("G.you!==G.cpu){gameOver();return}\n G.phase='switch';banner('SIDE RETIRED'",
-   "G.you!==G.cpu){gameOver();return}\n if(window.CD&&G.mode==='game'&&!G.online&&!G.top&&G.inning===1&&!G.cdB){G.cdB=1;const gb=G;if(CD.brk(()=>{paused=false;if(G===gb)endHalf()})){G.phase='switch';return}}G.phase='switch';banner('SIDE RETIRED'"),
+  # (2026-11-15) the mid-game 'Inning break' Full Game card is gone: BIRCO standard says promos only on menu / game over.
 ]
-for a, b in PATCHES:
-  assert rest.count(a) == 1, 'patch anchor not found once: ' + a[:50]
+FULL_GAME = STORE or CD_PAY.startswith('https://')  # never lock levels where nobody can buy the unlock
+if FULL_GAME:
+  for a, b in PATCHES:
+    assert rest.count(a) == 1, 'patch anchor not found once: ' + a[:50]
+    rest = rest.replace(a, b)
+  fg = (here / 'fullgame.js').read_text().replace('__CD_API__', CD_API).replace('__CD_PAY__', CD_PAY)
+  anchor = '<script>\n// ================= catalog'
+  assert rest.count(anchor) == 1
+  rest = rest.replace(anchor, '<script>\n' + fg + '</script>\n' + anchor)
+
+# Growth + money (BIRCO standard 2026-11-15): shared "More from BIRCO" cross-promo, end-of-game bar with the
+# optional rewarded video ("double it"), Full Game = no ads. Hooks around game start / game over only.
+MON_PATCHES = [
+  ("function newGame(){if(window.CD&&CD.stop('lg',S.cur))return;" if FULL_GAME else "function newGame(){",
+   ("function newGame(){if(window.CD&&CD.stop('lg',S.cur))return;" if FULL_GAME else "function newGame(){") + "if(window.CDM)CDM.start();"),
+  ("function newDerby(opts){opts=opts||{};" + ("if(window.CD&&!opts.online&&CD.stop('dv',opts.dlv??0))return;" if FULL_GAME else ""),
+   "function newDerby(opts){opts=opts||{};" + ("if(window.CD&&!opts.online&&CD.stop('dv',opts.dlv??0))return;" if FULL_GAME else "") + "if(window.CDM)CDM.start();"),
+  ("function newPitchStage(si){" + ("if(window.CD&&CD.stop('pc',si))return;" if FULL_GAME else ""),
+   "function newPitchStage(si){" + ("if(window.CD&&CD.stop('pc',si))return;" if FULL_GAME else "") + "if(window.CDM)CDM.start();"),
+  ("save();banner(win?'YOU WIN!'", "save();if(window.CDM)CDM.end();banner(win?'YOU WIN!'"),
+  ("setTimeout(()=>{if(G!==gg)return;newGame()},4400);", "setTimeout(()=>{if(G!==gg)return;window.CDM?CDM.after(newGame):newGame()},4400);"),
+  ("earn(150*(i+1),'Level clear')}save();const nx=pass?i+1:i;", "earn(150*(i+1),'Level clear')}save();if(window.CDM)CDM.end();const nx=pass?i+1:i;"),
+  ("setTimeout(()=>{if(G!==g)return;newDerby({dlv:nx})},2600)", "setTimeout(()=>{if(G!==g)return;window.CDM?CDM.after(()=>newDerby({dlv:nx})):newDerby({dlv:nx})},2600)"),
+  ("if(pass)earn(300*(si+1),'Stage clear');save();", "if(pass)earn(300*(si+1),'Stage clear');save();if(window.CDM)CDM.end();"),
+  ("setTimeout(()=>{if(G===g)newPitchStage(nx)},2800)}", "setTimeout(()=>{if(G===g)(window.CDM?CDM.after(()=>newPitchStage(nx)):newPitchStage(nx))},2800)}"),
+  ("async function toMenu(){", "async function toMenu(){if(window.CDM)CDM.hide();"),
+]
+for a, b in MON_PATCHES:
+  assert rest.count(a) == 1, 'monetize patch anchor not found once: ' + a[:60]
   rest = rest.replace(a, b)
-fg = (here / 'fullgame.js').read_text().replace('__CD_API__', CD_API).replace('__CD_PAY__', CD_PAY)
-anchor = '<script>\n// ================= catalog'
-assert rest.count(anchor) == 1
-rest = rest.replace(anchor, '<script>\n' + fg + '</script>\n' + anchor)
+birco = here.parent / 'birco'
+promo_json = (birco / 'crosspromo.json').read_text()
+mon = ('window.CD_PROMO=' + promo_json.strip() + ';\n' + (birco / 'crosspromo.js').read_text() + '\n' + (here / 'monetize.js').read_text())
+assert rest.count('</body></html>') == 1
+rest = rest.replace('</body></html>', '<script>\n' + mon + '</script>\n</body></html>')
 
 assert rest.rstrip().endswith('</body></html>')
 rest = rest.rstrip()[:-len('</body></html>')] + ('' if STORE else app_js) + '</body></html>\n'

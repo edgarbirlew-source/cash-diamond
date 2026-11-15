@@ -18,3 +18,9 @@ Bump `versionCode` in `android/app/build.gradle` for every upload.
 iOS: GitHub Actions > "iOS to TestFlight" builds on a Mac and uploads (needs the App Store Connect API key secrets).
 
 Store text, product setup, and kids/privacy answers: `store/LISTING.md`.
+
+Ads (Google AdMob, rewarded only): every id is in `ads.config.json` (Google TEST ids until the real ones are pasted in).
+`ads-apply.mjs` runs on every build and writes them into the Android manifest and iOS Info.plist (plus the
+App Tracking Transparency text and Google's SKAdNetwork ids). The player taps "Watch a video: double it" after a game;
+consent (UMP) and Apple's tracking prompt appear only the first time they tap it. Full Game owners never see ads.
+More from BIRCO: shared module in `../birco/`.

@@ -2,7 +2,7 @@
 name: iOS App Review
 on:
   push:
-    branches: [claude/project-thread-9p5ix3]
+    branches: [main, claude/project-thread-9p5ix3]
     paths: [app/ios/REVIEW]
 jobs:
   review:
