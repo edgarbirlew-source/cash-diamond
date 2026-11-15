@@ -92,6 +92,9 @@ VS_PATCHES = [
   ("(G.top?'▲':'▼')+G.inning", "((G.vs?G.vs.half%2===0:G.top)?'▲':'▼')+G.inning"),
   ("$('msg').innerHTML=cb?(G.top?", "$('msg').innerHTML=cb&&G.vs?(G.top?'Your turn to bat · hold, slide, release':'Pitching to <b>'+G.vs.opp.replace(/[<>&]/g,'')+'</b> · pick a pitch, tap the zone'):cb?(G.top?"),
   ("der?(G.online?'Online Derby':'HR Derby'):L.tier", "der?(G.online?'Online Derby':'HR Derby'):G.vs?'Online Game':L.tier"),
+  # a reload during an online game must not drop you into a solo game (tournaments bring you back to the bracket)
+  ("else if(d.mode==='game')newGame()}", "else if(d.mode==='game'&&!d.online)newGame()}"),
+  ("$('menuBtn').hidden=!inGame||!$('title').hidden;", "$('menuBtn').hidden=!inGame||!$('title').hidden||!!(window.CDT&&!$('tour').hidden);"),
 ]
 for a, b in VS_PATCHES:
   assert rest.count(a) == 1, 'vs patch anchor not found once: ' + a[:50]
@@ -101,6 +104,12 @@ if STORE:  # share links from the app point at the public web address
   a = "const link=code=>location.origin+location.pathname+'?vs='+code;"
   assert vs.count(a) == 1
   vs = vs.replace(a, f"const link=code=>'{WEB_URL}?vs='+code;")
+tour = (here / 'tour.js').read_text()
+if STORE:  # tournament links from the app point at the public web address too
+  a = "const link=()=>location.origin+location.pathname+'?t='+(st?st.code:'');"
+  assert tour.count(a) == 1
+  tour = tour.replace(a, f"const link=()=>'{WEB_URL}?t='+(st?st.code:'');")
+vs += '\n' + tour  # tournaments (bracket on the same server)
 assert rest.count('</body></html>') == 1
 rest = rest.replace('</body></html>', '<script>\n' + vs + '</script>\n</body></html>')
 

@@ -1,5 +1,5 @@
 // Cash Diamond service worker: works offline, picks up new versions on the next launch.
-const CACHE = 'cashdiamond-v25';
+const CACHE = 'cashdiamond-v26';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
