@@ -1,0 +1,28 @@
+# Re-sends TestFlight invites to the testers listed (as email hashes) in app/ios/TESTERS.
+name: iOS re-send tester invites
+on:
+  push:
+    branches: [claude/project-thread-9p5ix3]
+    paths: [app/ios/TESTERS]
+jobs:
+  invite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      ASC_KEY_ID: ${{ vars.ASC_KEY_ID || '4ZW5742DZ8' }}
+      ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID || '0327ee2c-9dea-4997-a752-35c5ebbb6162' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: API key
+        env:
+          P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/private_keys
+          clean=$(printf '%s' "$P8" | tr -d '\r')
+          body=$(printf '%s\n' "$clean" | awk '/BEGIN PRIVATE KEY/{f=1;next} /END PRIVATE KEY/{if(f)exit} f' | tr -d ' \n\t')
+          [ -n "$body" ] || body=$(printf '%s' "$clean" | tr -d ' \n\t')
+          { echo '-----BEGIN PRIVATE KEY-----'; echo "$body" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+      - run: pip3 install --quiet pyjwt cryptography
+      - run: python3 ios/asc-tester.py

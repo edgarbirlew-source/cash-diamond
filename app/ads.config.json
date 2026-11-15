@@ -1,0 +1,9 @@
+{
+  "_note": "ALL AdMob IDs for Cash Diamond live here. These are Google's official TEST IDs. To go live, paste Edgar's 4 IDs over them, run npm run sync, rebuild. Kids game? set childDirected to true.",
+  "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+  "androidRewarded": "ca-app-pub-3940256099942544/5224354917",
+  "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+  "iosRewarded": "ca-app-pub-3940256099942544/1712485313",
+  "childDirected": false,
+  "trackingText": "Cash Diamond uses this to show ads that fit you better. You can say no and still get every reward."
+}

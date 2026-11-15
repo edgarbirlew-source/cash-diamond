@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "updated": "2026-11-15",
+  "note": "ONE list for every BIRCO game. Edit here, push to gh-pages: every game picks it up on next launch. A tile shows only where live is true for that store. kidsSafe tiles are the only ones kids games show.",
+  "apps": [
+    {
+      "id": "cashdiamond",
+      "name": "Cash Diamond",
+      "pitch": "Cartoon baseball where every hit earns cash.",
+      "icon": "https://edgarbirlew-source.github.io/cash-diamond/icons/icon-192.png",
+      "play": "https://play.google.com/store/apps/details?id=com.birco.cashdiamond",
+      "appstore": "https://apps.apple.com/app/id6828503020",
+      "web": "https://edgarbirlew-source.github.io/cash-diamond/",
+      "live": { "play": true, "appstore": false },
+      "age": "Everyone / 4+",
+      "kidsSafe": true
+    },
+    {
+      "id": "knockoutzoo",
+      "name": "Knockout Zoo",
+      "pitch": "Animal brawls in a cartoon arena.",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": false
+    },
+    {
+      "id": "swordofthespirit",
+      "name": "Sword of the Spirit",
+      "pitch": "Bible adventure for young heroes.",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": true
+    },
+    {
+      "id": "searchanddestroy",
+      "name": "Search and Destroy",
+      "pitch": "",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": false
+    },
+    {
+      "id": "smashyard",
+      "name": "Smash Yard",
+      "pitch": "",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": true
+    }
+  ],
+  "recon": {
+    "name": "Watch Recon",
+    "pitch": "Recon the Raccoon: big questions, amazing discoveries.",
+    "icon": "",
+    "latest": "",
+    "channel": "",
+    "kidsSafe": true
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+www/
+dist-store/
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+ios/App/Pods/
+*.keystore
+*.jks
+keystore.properties
+icons/
