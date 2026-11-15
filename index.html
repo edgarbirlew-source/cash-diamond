@@ -501,7 +501,7 @@ function buildField(L){
 function castOf(){return{fChars:Array.from({length:7},makeChar),pChar:{you:makeChar(),cpu:makeChar()},fallbackC:makeChar(),kids:Array.from({length:7},(_,i)=>({x:22+i*54+rnd(-8,8),y:WALL_Y-20+rnd(-2,2),ph:rnd(0,6),phi:rnd(-.5,.5),c:makeChar(),shirt:pick(SHIRTS),cap:Math.random()<.5?pick(['#c4473b','#2c6fb5','#2f7d72','#e8a33c']):null})).filter((k,i)=>i!==3),bc:[null,null,null],moves:[]}}
 let G=Object.assign({phase:'title',top:true,bases:[0,0,0]},castOf()),P=null,F=null,CT=null,floaters=[],fx=[],paused=false,sel='fast',lastAim={x:200,y:398};
 function lineup(){return Array.from({length:9},()=>{const c=makeChar();return{num:1+Math.floor(Math.random()*59),name:pick(INIT)+'. '+pick(LAST),skin:c.skin,c}})}
-function newGame(){
+function newGame(){if(window.CDM)CDM.start();
  G=Object.assign(castOf(),{mode:'game',online:false,phase:'wait',next:performance.now()+1300,inning:1,top:true,you:0,cpu:0,outs:0,balls:0,strikes:0,bases:[0,0,0],innings:3,banner:null,swing:null,
   ln:{you:lineup(),cpu:lineup()},bi:{you:0,cpu:0},fSkins:Array.from({length:8},()=>pick(SKINS)),pSkin:{you:pick(SKINS),cpu:pick(SKINS)},chase:null});
  buildField(LV());P=F=CT=null;floaters=[];banner(LV().tier.toUpperCase(),'Play ball!','#ffb627',1400);ui()}
@@ -638,10 +638,10 @@ function gameOver(){if(G.vs)return VS.over();const win=G.you>G.cpu,L=LV();G.phas
   if(S.cur>=S.unlocked&&S.unlocked<LEVELS.length-1){S.unlocked++;S.fx=BALLFX[S.unlocked].id;S.fxOn=true;sub=`Unlocked: ${LEVELS[S.unlocked].name} (${LEVELS[S.unlocked].tier}) and the ${BALLFX[S.unlocked].name}.`}
   else if(S.cur===LEVELS.length-1)sub='World Series champions!';}
  else{S.losses++;save()}
- save();banner(win?'YOU WIN!':`${L.abbr} WINS`,`${G.you}–${G.cpu}`,win?'#5ee08a':'#ff5a5f',2400);
+ save();if(window.CDM)CDM.end();banner(win?'YOU WIN!':`${L.abbr} WINS`,`${G.you}–${G.cpu}`,win?'#5ee08a':'#ff5a5f',2400);
  const gg=G;setTimeout(()=>{if(G!==gg)return;if(win&&S.unlocked>S.cur&&sub&&sub.startsWith('Unlocked')){S.cur=S.unlocked;save();buildField(LV())}
   banner(win?'NEXT GAME':'REMATCH',(sub||`Record ${S.wins}–${S.losses}`).slice(0,46),'#ffd23f',1800)},2500);
- setTimeout(()=>{if(G!==gg)return;newGame()},4400);ui()}
+ setTimeout(()=>{if(G!==gg)return;window.CDM?CDM.after(newGame):newGame()},4400);ui()}
 
 // ================= input =================
 function pt(e){const r=C.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
@@ -1158,7 +1158,7 @@ const isDerby=()=>G.mode==='derby';
 const BALLOON_COLS=['#e8392e','#ffd23f','#2c6fb5','#5ee08a','#c084fc','#ff8a1f'];
 function makeTarget(k){const s=G.seed,r=hrand(s,k,1),sz=hrand(s,k,2);/* keep clear of the HUD at top-left */const rad=Math.round((sz<.34?16:sz<.7?21:27)*(G.mode==='derby'&&!G.online?curDL().bs:1));
  const _sx=130+r*210;return{k,bx:_sx,sx:_sx,sy:30+hrand(s,k,3)*58,r:rad,pts:sz<.34?250:sz<.7?150:100,col:BALLOON_COLS[Math.floor(hrand(s,k,4)*BALLOON_COLS.length)],bob:hrand(s,k,5)*6,born:performance.now()}}
-function newDerby(opts){opts=opts||{};
+function newDerby(opts){opts=opts||{};if(window.CDM)CDM.start();
  G=Object.assign(castOf(),{mode:'derby',online:!!opts.online,round:opts.round||1,phase:'wait',next:performance.now()+1500,inning:1,top:true,you:0,cpu:0,outs:0,balls:0,strikes:0,bases:[0,0,0],innings:3,banner:null,swing:null,
   ln:{you:lineup(),cpu:lineup()},bi:{you:0,cpu:0},chase:null,seed:opts.seed??(Math.random()*1e9|0),pitchN:0,targetN:0,pts:0,dOuts:0,hrs:0,longest:0});
  G.dlv=G.online?0:(opts.dlv??0);G.round=G.dlv+1;G.dpark=G.online?null:dlvAt(G.dlv).park;buildField(LV());
@@ -1196,8 +1196,8 @@ function drawZoneDots(now){if(!isDerby()||!G.top||!['wait','windup','pitch'].inc
  for(const t of G.targets){const dir=(t.sx-200)/170,loft=(95-t.sy)/80*2-1,x=zcx+clamp(dir,-1,1)*ZONE.w/2,y=zcy-clamp(loft,-1,1)*ZONE.h/2;
   X.globalAlpha=.85;paint(ellP(x,y,4.5,5.2),t.col,.5,{ow:1.2,flat:1});X.globalAlpha=1}}
 function derbyOver(){G.phase='over';P=F=CT=null;const best=S.derbyBest||0,rec=G.pts>best;if(rec){S.derbyBest=G.pts;save()}netPush(true);const g=G;
- if(!G.online){const d=curDL(),pass=G.pts>=d.goal,i=G.dlv||0;S.dBest=S.dBest||{};S.dBest[i]=Math.max(S.dBest[i]||0,G.pts);if(pass){S.dOpen=Math.max(S.dOpen||0,i+1);earn(150*(i+1),'Level clear')}save();const nx=pass?i+1:i;
-  banner(pass?'LEVEL CLEARED!':'TRY AGAIN',`${G.pts}/${d.goal} pts · ${pass?'next':'again'}: ${dlvAt(nx).name}`,pass?'#5ee08a':'#ff5a5f',2400);setTimeout(()=>{if(G!==g)return;newDerby({dlv:nx})},2600);ui();return}
+ if(!G.online){const d=curDL(),pass=G.pts>=d.goal,i=G.dlv||0;S.dBest=S.dBest||{};S.dBest[i]=Math.max(S.dBest[i]||0,G.pts);if(pass){S.dOpen=Math.max(S.dOpen||0,i+1);earn(150*(i+1),'Level clear')}save();if(window.CDM)CDM.end();const nx=pass?i+1:i;
+  banner(pass?'LEVEL CLEARED!':'TRY AGAIN',`${G.pts}/${d.goal} pts · ${pass?'next':'again'}: ${dlvAt(nx).name}`,pass?'#5ee08a':'#ff5a5f',2400);setTimeout(()=>{if(G!==g)return;window.CDM?CDM.after(()=>newDerby({dlv:nx})):newDerby({dlv:nx})},2600);ui();return}
  banner('DERBY OVER',G.pts+' points','#ffd23f',2200);
  setTimeout(()=>{if(G!==g)return;if(G.online)return onlineResult();showOverlay(rec?'New Record!':'Derby Over',`${G.pts} points · ${G.hrs} home runs · longest ${G.longest||0} ft. Best: ${Math.max(best,G.pts)} pts.`,false,'derby')},2200);ui()}
 function drawDerbyHud(){if(!isDerby()||G.phase==='title')return;const o=NET.opp;
@@ -1494,10 +1494,10 @@ function pcHitCheck(now){const b=G.pb;let hit=null,best=1e9;
  if(G.pcLeft<=0){G.phase='over';const g=G;setTimeout(()=>{if(G===g)pcEnd()},1000);ui();return}
  nextPitch(700)}
 function pcEnd(){const st=pcStage(),si=G.pcSi,pass=G.pcPts>=st.goal,stars=G.pcPts>=st.goal*1.8?3:G.pcPts>=st.goal*1.35?2:pass?1:0;
- const sk=st.id+(st.tier?'#'+st.tier:'');S.pcStars=S.pcStars||{};S.pcStars[sk]=Math.max(S.pcStars[sk]||0,stars);if(pass&&(S.pcOpen||0)<=si)S.pcOpen=si+1;if(pass)earn(300*(si+1),'Stage clear');save();
+ const sk=st.id+(st.tier?'#'+st.tier:'');S.pcStars=S.pcStars||{};S.pcStars[sk]=Math.max(S.pcStars[sk]||0,stars);if(pass&&(S.pcOpen||0)<=si)S.pcOpen=si+1;if(pass)earn(300*(si+1),'Stage clear');save();if(window.CDM)CDM.end();
  const nx=pass?si+1:si,g=G;banner(pass?'STAGE CLEARED!':'TRY AGAIN',`${G.pcPts}/${st.goal} ${'★'.repeat(stars)}${'☆'.repeat(3-stars)} · ${pass?'next: ':'again: '}${pcStageAt(nx).name}`,pass?'#5ee08a':'#ff5a5f',2600);
- setTimeout(()=>{if(G===g)newPitchStage(nx)},2800)}
-function newPitchStage(si){G=Object.assign(castOf(),{mode:'pitchch',online:false,phase:'wait',next:performance.now()+1400,inning:1,top:false,you:0,cpu:0,outs:0,balls:0,strikes:0,bases:[0,0,0],innings:3,banner:null,swing:null,
+ setTimeout(()=>{if(G===g)(window.CDM?CDM.after(()=>newPitchStage(nx)):newPitchStage(nx))},2800)}
+function newPitchStage(si){if(window.CDM)CDM.start();G=Object.assign(castOf(),{mode:'pitchch',online:false,phase:'wait',next:performance.now()+1400,inning:1,top:false,you:0,cpu:0,outs:0,balls:0,strikes:0,bases:[0,0,0],innings:3,banner:null,swing:null,
   ln:{you:lineup(),cpu:lineup()},bi:{you:0,cpu:0},chase:null,pcSi:si,pcStage:pcStageAt(si),pcPts:0,pcLeft:pcStageAt(si).throws,pcStreak:0,pcHits:0,pcPops:[]});
  const st0=G.pcStage;buildPCScene(st0);pcFill();P=F=CT=null;floaters=[];banner(st0.name.toUpperCase(),'Goal '+st0.goal+' pts · tap to throw','#ffd23f',1700);ui()}
 function drawPC(now,dt){X.drawImage(pcBg,0,0,W,H);
@@ -1611,7 +1611,7 @@ $('playBtn').onclick=async()=>{await leaveMatch();$('title').hidden=true;if(!S.p
 $('pcBtn').onclick=async()=>{await leaveMatch();showOverlay('Pitch Challenge','Clear each stage to unlock the next. Targets get smaller and faster.',false,'pcsel')};
 $('derbyBtn').onclick=async()=>{await leaveMatch();showOverlay('Home Run Derby','Hit the goal to unlock the next level. Hold SWING to wind up, slide to aim, let go to swing.',false,'dsel')};
 $('onlineBtn').onclick=()=>openOnline();
-async function toMenu(){await leaveMatch();$('shop').hidden=true;paused=false;G=Object.assign(castOf(),{phase:'title',top:true,bases:[0,0,0],mode:'game',outs:0,balls:0,strikes:0,you:0,cpu:0,inning:1});P=F=CT=null;floaters=[];PARTS=[];buildField(LV());
+async function toMenu(){if(window.CDM)CDM.hide();await leaveMatch();$('shop').hidden=true;paused=false;G=Object.assign(castOf(),{phase:'title',top:true,bases:[0,0,0],mode:'game',outs:0,balls:0,strikes:0,you:0,cpu:0,inning:1});P=F=CT=null;floaters=[];PARTS=[];buildField(LV());
  showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)}
 $('menuBtn').onclick=e=>{e.stopPropagation();toMenu()};
 $('onBack').onclick=async()=>{await leaveMatch();$('online').hidden=true;showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)};
@@ -2136,6 +2136,271 @@ window.CDT=(()=>{
   else if(sess)addEventListener('load',()=>setTimeout(()=>open(),300))}catch(e){}
 
  return{open,show,hide,report,active:()=>!!st,state:()=>st}})();
+</script>
+<script>
+window.CD_PROMO={
+  "version": 1,
+  "updated": "2026-11-15",
+  "note": "ONE list for every BIRCO game. Edit here, push to gh-pages: every game picks it up on next launch. A tile shows only where live is true for that store. kidsSafe tiles are the only ones kids games show.",
+  "apps": [
+    {
+      "id": "cashdiamond",
+      "name": "Cash Diamond",
+      "pitch": "Cartoon baseball where every hit earns cash.",
+      "icon": "https://edgarbirlew-source.github.io/cash-diamond/icons/icon-192.png",
+      "play": "https://play.google.com/store/apps/details?id=com.birco.cashdiamond",
+      "appstore": "https://apps.apple.com/app/id6828503020",
+      "web": "https://edgarbirlew-source.github.io/cash-diamond/",
+      "live": { "play": true, "appstore": false },
+      "age": "Everyone / 4+",
+      "kidsSafe": true
+    },
+    {
+      "id": "knockoutzoo",
+      "name": "Knockout Zoo",
+      "pitch": "Animal brawls in a cartoon arena.",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": false
+    },
+    {
+      "id": "swordofthespirit",
+      "name": "Sword of the Spirit",
+      "pitch": "Bible adventure for young heroes.",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": true
+    },
+    {
+      "id": "searchanddestroy",
+      "name": "Search and Destroy",
+      "pitch": "",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": false
+    },
+    {
+      "id": "smashyard",
+      "name": "Smash Yard",
+      "pitch": "",
+      "icon": "",
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "",
+      "kidsSafe": true
+    }
+  ],
+  "recon": {
+    "name": "Watch Recon",
+    "pitch": "Recon the Raccoon: big questions, amazing discoveries.",
+    "icon": "",
+    "latest": "",
+    "channel": "",
+    "kidsSafe": true
+  }
+};
+/* BIRCO shared cross-promotion module (one copy for every BIRCO game).
+ *
+ * Live config:  https://raw.githubusercontent.com/edgarbirlew-source/cash-diamond/gh-pages/birco/crosspromo.json
+ * This module:  https://edgarbirlew-source.github.io/cash-diamond/birco/crosspromo.js
+ * Edit the JSON once and every game shows the change on its next launch. Each game also bundles a copy of
+ * the JSON as a fallback for offline play.
+ *
+ * Use:
+ *   BIRCO.promo.init({ game: 'cashdiamond', fallback: {...bundled json...}, isFull: () => false, kids: false })
+ *   BIRCO.promo.open()          // "More from BIRCO" sheet (menu / game-over screens only, never during play)
+ *   BIRCO.promo.onceAfterGame() // at most ONE full-screen promo per session, never for Full Game owners
+ *   BIRCO.promo.tiles()         // the tiles this player would see
+ *
+ * Rules built in: only apps live in this phone's store; this game's own tile hidden; Play link on Android,
+ * App Store link on iPhone; every link tagged utm_source=<game>&utm_campaign=crosspromo; kids mode shows
+ * kidsSafe tiles only and no external links.
+ */
+(function () {
+  var URL_LIVE = 'https://raw.githubusercontent.com/edgarbirlew-source/cash-diamond/gh-pages/birco/crosspromo.json';
+  var CACHE = 'birco_promo_cfg', SEEN = 'birco_promo_once';
+  var o = { game: 'game', kids: false, isFull: function () { return false }, fallback: null, platform: null, onOpen: null, onClose: null };
+  var cfg = null, sheet = null;
+
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v) } catch (e) { return null } }
+  function platform() {
+    if (o.platform) return o.platform;
+    try { if (window.Capacitor && Capacitor.getPlatform) { var p = Capacitor.getPlatform(); if (p === 'android' || p === 'ios') return p } } catch (e) {}
+    var ua = navigator.userAgent || '';
+    if (/android/i.test(ua)) return 'android';
+    if (/iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    return 'web';
+  }
+  function native() { try { return !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) } catch (e) { return false } }
+  function valid(c) { return c && Array.isArray(c.apps) }
+
+  function tag(url, kind) {
+    if (!url) return '';
+    var src = encodeURIComponent(o.game), q = 'utm_source=' + src + '&utm_campaign=crosspromo';
+    if (kind === 'play') { // Play passes the referrer string to the installed app (Install Referrer API)
+      return url + (url.indexOf('?') < 0 ? '?' : '&') + 'referrer=' + encodeURIComponent(q);
+    }
+    if (kind === 'appstore') q += '&ct=' + src + '-crosspromo'; // App Store Connect campaign token
+    return url + (url.indexOf('?') < 0 ? '?' : '&') + q;
+  }
+
+  function tiles() {
+    var c = cfg || o.fallback || { apps: [] }, p = platform(), out = [];
+    (c.apps || []).forEach(function (a) {
+      if (!a || a.id === o.game) return;                       // hide this game's own tile
+      if (o.kids && !a.kidsSafe) return;
+      var live = a.live || {}, url = '', kind = '';
+      if (p === 'ios') { if (live.appstore && a.appstore) { url = a.appstore; kind = 'appstore' } }
+      else if (p === 'android') { if (live.play && a.play) { url = a.play; kind = 'play' } }
+      else if (live.play && a.play) { url = a.play; kind = 'play' } // desktop / web: Google Play page
+      if (!url) return;                                           // show only apps live in this store
+      out.push({ id: a.id, name: a.name, pitch: a.pitch || '', icon: a.icon || '', age: a.age || '', btn: 'Get it', url: o.kids ? '' : tag(url, kind) });
+    });
+    var r = c.recon;
+    if (r && (r.latest || r.channel) && (!o.kids || r.kidsSafe)) {
+      out.push({ id: 'recon', name: r.name || 'Watch Recon', pitch: r.pitch || '', icon: r.icon || '', btn: 'Watch', url: o.kids ? '' : tag(r.latest || r.channel, 'video') });
+    }
+    return out.slice(0, 6);
+  }
+
+  function go(url) {
+    if (!url) return;
+    if (native()) { location.href = url; return } // Capacitor hands store / YouTube links to the phone's own app
+    var w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url;
+  }
+
+  function css() {
+    if (document.getElementById('bircoPromoCss')) return;
+    var s = document.createElement('style'); s.id = 'bircoPromoCss';
+    s.textContent = '.bpSheet{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,20,50,.82)}' +
+      '.bpCard{width:100%;max-width:380px;max-height:100%;overflow-y:auto;box-sizing:border-box;background:#fff6d6;color:#1b1b2f;border:4px solid #1b1b2f;border-radius:20px;box-shadow:0 7px 0 #1b1b2f;padding:16px;display:flex;flex-direction:column;gap:10px;font:700 15px/1.25 system-ui,sans-serif;text-align:center}' +
+      '.bpCard h2{margin:0;font-size:26px;line-height:1.1;color:#1d4fa3}' +
+      '.bpRow{display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:3px solid #1b1b2f;border-radius:14px;padding:8px}' +
+      '.bpIco{flex:none;width:48px;height:48px;border-radius:12px;object-fit:cover;background:#1d4fa3;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px}' +
+      '.bpTxt{flex:1;min-width:0}.bpTxt b{display:block;font-size:16px}.bpTxt small{display:block;font-weight:600;color:#55516a;font-size:13px}' +
+      '.bpBtn{flex:none;border:3px solid #1b1b2f;border-radius:12px;background:#5ee08a;color:#1b1b2f;font:800 15px system-ui,sans-serif;padding:8px 12px;cursor:pointer}' +
+      '.bpX{border:3px solid #1b1b2f;border-radius:14px;background:#ffd23f;color:#1b1b2f;font:800 17px system-ui,sans-serif;padding:10px;cursor:pointer}' +
+      '.bpNote{color:#55516a;font-size:14px}.bpLink{background:none;border:0;color:#2c6fb5;text-decoration:underline;font:600 13px system-ui,sans-serif;cursor:pointer}';
+    document.head.appendChild(s);
+  }
+  function esc(t) { return String(t || '').replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';' }) }
+
+  function close() { if (sheet) { sheet.remove(); sheet = null; if (o.onClose) o.onClose() } }
+  function open(head, extra) {
+    css(); if (sheet) sheet.remove();
+    var list = tiles();
+    var rows = list.map(function (t, i) {
+      var ico = t.icon ? '<img class="bpIco" alt="" src="' + esc(t.icon) + '">' : '<span class="bpIco">' + esc((t.name || '?')[0]) + '</span>';
+      return '<div class="bpRow">' + ico + '<div class="bpTxt"><b>' + esc(t.name) + '</b><small>' + esc(t.pitch) + '</small></div>' +
+        (t.url ? '<button class="bpBtn" data-i="' + i + '">' + esc(t.btn) + '</button>' : '') + '</div>';
+    }).join('');
+    sheet = document.createElement('div'); sheet.className = 'bpSheet';
+    sheet.innerHTML = '<div class="bpCard"><h2>' + esc(head || 'More from BIRCO') + '</h2>' +
+      (rows || '<p class="bpNote">More BIRCO games are on the way. Check back soon!</p>') +
+      (o.kids && rows ? '<p class="bpNote">Ask a grown-up to find these in the app store.</p>' : '') +
+      (extra || '') + '<button class="bpX" data-x>Back</button></div>';
+    sheet.addEventListener('pointerdown', function (e) { e.stopPropagation() });
+    sheet.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-i],[data-x]'); if (!b) return;
+      if (b.hasAttribute('data-x')) return close();
+      go(list[+b.getAttribute('data-i')].url);
+    });
+    document.body.appendChild(sheet);
+    if (o.onOpen) o.onOpen();
+    return sheet;
+  }
+
+  // At most one full-screen promo per app session, never for players who bought the Full Game.
+  function onceAfterGame() {
+    var s; try { s = sessionStorage.getItem(SEEN) } catch (e) {}
+    if (s || o.isFull() || !tiles().length || sheet) return false;
+    try { sessionStorage.setItem(SEEN, '1') } catch (e) {}
+    open('Try another BIRCO game'); return true;
+  }
+
+  function init(opts) {
+    for (var k in opts) o[k] = opts[k];
+    try { var c = JSON.parse(store(CACHE) || 'null'); if (valid(c)) cfg = c } catch (e) {}
+    try {
+      fetch(o.url || URL_LIVE, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null }).then(function (c) {
+        if (valid(c)) { cfg = c; store(CACHE, JSON.stringify(c)) }
+      }).catch(function () {});
+    } catch (e) {}
+    return api;
+  }
+
+  var api = { init: init, open: open, close: close, tiles: tiles, onceAfterGame: onceAfterGame, isOpen: function () { return !!sheet }, _tag: tag, _platform: platform };
+  window.BIRCO = window.BIRCO || {}; window.BIRCO.promo = api;
+})();
+
+/* ---- Growth + money (BIRCO standard, 2026-11-15) ----
+ * 1. "More from BIRCO" (shared module birco/crosspromo.js): title-screen button + end-of-game bar. Never during play.
+ * 2. Full Game owners: no ads, no promo interruptions; their "double it" bonus needs no video.
+ * 3. Rewarded ads (store apps only): after a game / Derby level / Pitch stage, the player MAY tap
+ *    "Watch a video: double it" to double the cash won in that game. Nothing ever plays by itself.
+ */
+window.CDM=(()=>{
+ const full=()=>!!(window.CD&&CD.isFull&&CD.isFull());
+ const ads=()=>!!(window.CDN&&CDN.ads&&CDN.ads.available);
+ const CAP=5000,MIN=100;
+ let base=null,bar=null,hold=null,busy=false;
+ if(window.BIRCO&&BIRCO.promo)BIRCO.promo.init({game:'cashdiamond',fallback:window.CD_PROMO||null,isFull:full,
+  onOpen:()=>{paused=true},onClose:()=>{if(busy)release();else paused=false}});
+
+ const css=document.createElement('style');css.textContent=`
+.cdmBar{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:25;width:calc(100% - 24px);max-width:420px;box-sizing:border-box;
+ background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;font-family:var(--body);font-weight:700;font-size:14px}
+.cdmBar b{flex:1 1 100%;text-align:center;font-size:15px}
+.cdmBar button{flex:1 1 40%;min-width:0;font-family:var(--display);font-size:15px;padding:9px 6px 6px;border:3px solid var(--ink);border-radius:12px;box-shadow:0 3px 0 var(--ink);cursor:pointer;color:var(--ink)}
+.cdmBar .cdmGo{background:#5ee08a}.cdmBar .cdmMore{background:var(--sun)}
+`;document.head.appendChild(css);
+
+ function hide(){if(bar){bar.remove();bar=null}}
+ function release(){const h=hold;hold=null;busy=false;paused=false;hide();if(h&&G===h.g)h.fn()}
+ // The game asks before auto-starting the next game. While the bar is up it waits a little longer,
+ // and while the player is using it (video, More from BIRCO) it waits until they are done.
+ function after(fn){const g=G;if(busy){hold={fn,g};return}
+  if(bar&&!bar.dataset.waited){bar.dataset.waited='1';setTimeout(()=>{if(G===g)after(fn)},2500);return}
+  hide();fn()}
+ function start(){base=S.money;hide();hold=null;busy=false}
+ function menu(){hide();hold=null;busy=false;base=null}
+ function end(){if(!G||G.online||G.vs||base==null)return;const gain=S.money-base;base=null;
+  const canDouble=gain>=MIN&&(full()||ads()),reward=Math.min(gain,CAP);
+  const promo=window.BIRCO&&BIRCO.promo;
+  if(!canDouble&&!promo)return;
+  hide();bar=document.createElement('div');bar.className='cdmBar';
+  bar.innerHTML=(canDouble?`<b>You won ${fmt(gain)} this game!</b><button class="cdmGo" data-go>${full()?'Double it! (Full Game)':'▶ Watch a video: double it'}</button>`:'')+
+   (promo?'<button class="cdmMore" data-more>More from BIRCO</button>':'');
+  bar.addEventListener('pointerdown',e=>e.stopPropagation());
+  const go=bar.querySelector('[data-go]');if(go)go.onclick=()=>double(reward,go);
+  const mo=bar.querySelector('[data-more]');if(mo)mo.onclick=()=>{busy=true;paused=true;BIRCO.promo.open()};
+  document.body.appendChild(bar);
+  if(ads()&&!full())CDN.ads.warm();
+ }
+ async function double(n,btn){if(busy&&btn.disabled)return;busy=true;paused=true;btn.disabled=true;
+  if(full()){pay(n);return}
+  btn.textContent='Loading video…';
+  try{if(await CDN.ads.show())pay(n);else{btn.textContent='No reward: video closed early';setTimeout(release,1400)}}
+  catch(e){btn.textContent='No video right now. Try later!';setTimeout(release,1600)}}
+ function pay(n){S.money+=n;save();ui();banner('CASH DOUBLED!','+'+fmt(n),'#5ee08a',1600);hide();setTimeout(release,1700)}
+
+ // title screen: "More from BIRCO" (and the ad privacy link where the law needs one)
+ addEventListener('load',()=>{const m=document.getElementById('modes');if(!m||!window.BIRCO)return;
+  const b=document.createElement('button');b.className='big alt';b.id='moreBtn';b.textContent='More from BIRCO';b.style.flex='1 1 100%';
+  b.onclick=()=>{const extra=ads()&&!full()?'<button class="bpLink" data-privacy hidden>Ad privacy choices</button>':'';BIRCO.promo.open(null,extra);
+   const pv=document.querySelector('.bpSheet [data-privacy]');if(pv)CDN.ads.privacyNeeded().then(r=>{if(r){pv.hidden=false;pv.onclick=()=>CDN.ads.privacy()}})};
+  const fb=document.getElementById('fullBtn');m.insertBefore(b,fb||null)});
+ return{start,end,after,hide:menu,isFull:full}})();
 </script>
 
 <script>
