@@ -75,8 +75,6 @@
 <!-- admob:start -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5250558350593664~3832265269</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Cash Diamond uses this to show ads that fit you better. You can say no and still get every reward.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict><key>SKAdNetworkIdentifier</key><string>cstr6suwn9.skadnetwork</string></dict>

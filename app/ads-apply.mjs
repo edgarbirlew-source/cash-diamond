@@ -23,15 +23,14 @@ m = between(m, '<!-- admob:start -->', '<!-- admob:end -->', mBody) ??
   m.replace('</application>', `<!-- admob:start -->${mBody}<!-- admob:end -->\n    </application>`);
 writeFileSync(man, m);
 
-// iOS: GADApplicationIdentifier, App Tracking Transparency text, SKAdNetwork ids
+// iOS: GADApplicationIdentifier, SKAdNetwork ids, and the App Tracking Transparency text only when the game is NOT child-directed
+// (kids apps must never show Apple's tracking prompt).
 const pl = 'ios/App/App/Info.plist';
 let p = readFileSync(pl, 'utf8');
 const pBody = `
 \t<key>GADApplicationIdentifier</key>
 \t<string>${c.iosAppId}</string>
-\t<key>NSUserTrackingUsageDescription</key>
-\t<string>${esc(c.trackingText)}</string>
-\t<key>SKAdNetworkItems</key>
+${c.childDirected || !c.trackingText ? '' : `\t<key>NSUserTrackingUsageDescription</key>\n\t<string>${esc(c.trackingText)}</string>\n`}\t<key>SKAdNetworkItems</key>
 \t<array>
 ${SKAN.map(id => `\t\t<dict><key>SKAdNetworkIdentifier</key><string>${id}.skadnetwork</string></dict>`).join('\n')}
 \t</array>

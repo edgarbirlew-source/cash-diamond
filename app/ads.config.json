@@ -1,9 +1,8 @@
 {
-  "_note": "ALL AdMob IDs for Cash Diamond live here (BIRCO AdMob account pub-5250558350593664, set up 2026-11-16). To test with Google's sample ads, paste the test ids back (ca-app-pub-3940256099942544~3347511713 /5224354917 Android, ~1458002511 /1712485313 iOS), run npm run sync, rebuild. Kids game? set childDirected to true.",
+  "_note": "ALL AdMob IDs for Cash Diamond live here (BIRCO AdMob account pub-5250558350593664, set up 2026-11-16). To test with Google's sample ads, paste the test ids back (ca-app-pub-3940256099942544~3347511713 /5224354917 Android, ~1458002511 /1712485313 iOS), run npm run sync, rebuild. childDirected is true (owner decision 2026-11-18: Cash Diamond stays a kids game): every ad request is child-directed and under-age-of-consent, max rating G, non-personalized, and the app never shows Apple's tracking prompt.",
   "androidAppId": "ca-app-pub-5250558350593664~5606567278",
   "androidRewarded": "ca-app-pub-5250558350593664/5414995584",
   "iosAppId": "ca-app-pub-5250558350593664~3832265269",
   "iosRewarded": "ca-app-pub-5250558350593664/8893020259",
-  "childDirected": false,
-  "trackingText": "Cash Diamond uses this to show ads that fit you better. You can say no and still get every reward."
+  "childDirected": true
 }

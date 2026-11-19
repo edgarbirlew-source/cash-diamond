@@ -43,19 +43,22 @@ if (window.CDN.native) {
 // no interstitials. IDs come from ads.config.json (Google TEST ids until Edgar's real ones are pasted there).
 // Consent (UMP, EEA/UK) and Apple's tracking prompt are asked only the first time a player taps "Watch",
 // so Full Game owners and players who never watch never see them.
+// CHILD-SAFE MODE (ADS.childDirected, on for Cash Diamond since 2026-11-18): every request is tagged child-directed and
+// under-age-of-consent, max content rating General, non-personalized (npa), and Apple's tracking prompt is never shown.
 import { AdMob, RewardAdPluginEvents } from '@capacitor-community/admob';
 import ADS from '../ads.config.json';
 
+const KIDS = !!ADS.childDirected;
 const AD_UNIT = Capacitor.getPlatform() === 'ios' ? ADS.iosRewarded : ADS.androidRewarded;
 let adInit = null, adReady = null, adAsked = (() => { try { return !!localStorage.getItem('cd_ad_asked') } catch (e) { return false } })();
 const adStart = () => adInit || (adInit = AdMob.initialize({
-  tagForChildDirectedTreatment: !!ADS.childDirected, tagForUnderAgeOfConsent: !!ADS.childDirected,
-  ...(ADS.childDirected ? { maxAdContentRating: 'General' } : {}),
+  tagForChildDirectedTreatment: KIDS, tagForUnderAgeOfConsent: KIDS,
+  ...(KIDS ? { maxAdContentRating: 'General' } : {}),
 }).catch(e => { adInit = null; throw e }));
 async function adConsent() { // Google UMP consent form (EEA / UK), then Apple's App Tracking Transparency prompt
-  let info = await AdMob.requestConsentInfo();
+  let info = await AdMob.requestConsentInfo(KIDS ? { tagForUnderAgeOfConsent: true } : {});
   if (info.isConsentFormAvailable && info.status === 'REQUIRED') info = await AdMob.showConsentForm();
-  if (Capacitor.getPlatform() === 'ios') {
+  if (!KIDS && Capacitor.getPlatform() === 'ios') {
     const t = await AdMob.trackingAuthorizationStatus().catch(() => ({ status: 'authorized' }));
     if (t.status === 'notDetermined') await AdMob.requestTrackingAuthorization().catch(() => {});
   }
@@ -63,14 +66,14 @@ async function adConsent() { // Google UMP consent form (EEA / UK), then Apple's
   return info.canRequestAds !== false;
 }
 const adLoad = () => adReady || (adReady = adStart()
-  .then(() => AdMob.prepareRewardVideoAd({ adId: AD_UNIT }))
+  .then(() => AdMob.prepareRewardVideoAd({ adId: AD_UNIT, ...(KIDS ? { npa: true } : {}) }))
   .catch(e => { adReady = null; throw e }));
 
 window.CDN.ads = {
   available: window.CDN.native,
   test: /^ca-app-pub-3940256099942544\//.test(AD_UNIT),
   // Warm up an ad in the background, but only for players who already answered the consent questions.
-  async warm() { if (!adAsked) return; try { const i = await AdMob.requestConsentInfo(); if (i.canRequestAds) adLoad().catch(() => {}) } catch (e) {} },
+  async warm() { if (!adAsked) return; try { const i = await AdMob.requestConsentInfo(KIDS ? { tagForUnderAgeOfConsent: true } : {}); if (i.canRequestAds) adLoad().catch(() => {}) } catch (e) {} },
   // Show one rewarded video. Resolves true only if Google says the player earned the reward.
   async show() {
     if (!adAsked && !(await adConsent())) return false;
