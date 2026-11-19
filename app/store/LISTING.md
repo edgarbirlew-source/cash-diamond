@@ -66,8 +66,9 @@ The cash in Cash Diamond is pretend game money. It can't be bought, cashed out o
 
 ## Kids, privacy and content answers
 
-What the app does with data (true for v1.0.0):
-- No accounts, no ads, no analytics, no tracking, no ad ID.
+What the app does with data (updated 2026-11-18 for builds with AdMob rewarded video; v1.0.0 had no ads):
+- No accounts, no analytics.
+- Optional rewarded video ads from Google AdMob (player taps to watch; never during play), in child-safe mode (owner decision 2026-11-18): child-directed + under-age-of-consent tags, max rating G, non-personalized, no Apple tracking prompt. Full Game owners see no ads.
 - Progress is saved on the phone only.
 - Online Vs sends a player nickname and moves to BIRCO's game server for the match only. Nothing is stored after the room closes (3 hours max). No chat.
 - Purchases are handled by Apple / Google. BIRCO never sees card details.
@@ -75,12 +76,12 @@ What the app does with data (true for v1.0.0):
 | Question | Answer |
 |---|---|
 | Apple age rating | 4+ (no violence, gambling, or user content). Answer "No" to simulated gambling: game cash is not wagered. |
-| Apple Kids Category | Don't opt in for v1. It bans most ad SDKs, which would block AdMob later. The game still gets 4+. |
-| Apple privacy label | "Data Not Collected" |
-| Play target age groups | 9-12 and 13+ (recommended). Choosing under 13 turns on the Families policy, which we already meet (no ads, no data). Later AdMob must use child-directed settings. |
+| Apple Kids Category | Don't opt in for now: Kids Category bars third-party advertising unless every ad is human-reviewed. Keep 4+ and child-safe AdMob. Revisit if Edgar wants the Kids Category badge. |
+| Apple privacy label | v1.0.0: "Data Not Collected". With child-safe AdMob: declare Identifiers? No (no IDFA, no ATT). Declare Usage Data (Advertising Data) and Diagnostics collected by the third-party ad SDK, Not linked to the user, Not used to track. Edgar confirms in App Store Connect. |
+| Play target age groups | Include under 13 (owner decision 2026-11-18: Cash Diamond stays a kids game). Families policy applies: AdMob is Families self-certified, app/ads.config.json childDirected is true (child-directed, G, non-personalized). In AdMob, also set the app's "tag for child-directed treatment" and max ad content rating G. |
 | Play content rating (IARC) | Expect Everyone / PEGI 3. No violence, no gambling, no user chat, has in-app purchase, has online play with friends by code. |
-| Play data safety | No data collected or shared. Data encrypted in transit: yes. |
-| Play "contains ads" | No (v1) |
+| Play data safety | v1.0.0: no data collected or shared. With child-safe AdMob: App activity / Diagnostics collected by the ad SDK for Advertising and Fraud prevention; no advertising ID used for personalization. Data encrypted in transit: yes. |
+| Play "contains ads" | Yes from the first build with AdMob (v1.0.0 was No). Store text: "Contains ads. Buy the Full Game once to remove all ads." |
 | Privacy policy URL | Required by both. Page is `privacy.html` in the repo; it goes live at https://edgarbirlew-source.github.io/cash-diamond/privacy.html |
 
 ## Name check (2026-10-24)

@@ -99,7 +99,7 @@ ${STORE?'<button class="cdlink" data-restore>Restore purchase</button>':'<button
    toMenu().then(()=>{if(k==='dv')$('derbyBtn').click();if(k==='pc')$('pcBtn').click();offer(k,'Keep going!',()=>{paused=false;ui()})});return true},
   beat(k){if(k==='lg'){put('cd_beat3','1');setTimeout(()=>{if(!full())offer('lg','You beat High School!',resume)},2600)}},
   brk(cb){if(full())return false;const last=+get('cd_brk')||0;if(Date.now()-last<GAP)return false;put('cd_brk',String(Date.now()));
-   show(`<h2>Inning break</h2><p>Liking Cash Diamond? Get every league and level with the Full Game.</p><div class="cdprice">${PRICE} one time<small>No subscription. No ads.</small></div>
+   show(`<h2>Inning break</h2><p>Liking Cash Diamond? Get every league and level with the Full Game.</p><div class="cdprice">${PRICE} one time<small>${STORE?'No subscription. Removes all ads.':'No subscription.'}</small></div>
 <button class="big" data-more>See the Full Game</button><button class="big alt" data-x>Keep playing</button>`,q=>{q('[data-more]').onclick=()=>offer(null,null,cb)},cb);return true},
   open:()=>offer(null),
   isFull:full,
