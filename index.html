@@ -230,7 +230,7 @@ button.gold{background:#ff8a1f;color:#fff;text-shadow:0 2px 0 var(--ink)}
     <div class="chips" id="chips" hidden></div>
 
     <div class="overlay" id="title">
-      <h1 id="tTitle">Cash Diamond</h1>
+      <h1 id="tTitle">Cash Diamond™</h1>
       <p id="tSub">Win to move up: sandlot, Little League, high school, college, minors, the big leagues, then the World Series.</p>
       <div class="modes" id="modes">
         <button class="big" id="playBtn">Play Ball</button>
@@ -1612,9 +1612,9 @@ $('pcBtn').onclick=async()=>{await leaveMatch();showOverlay('Pitch Challenge','C
 $('derbyBtn').onclick=async()=>{await leaveMatch();showOverlay('Home Run Derby','Hit the goal to unlock the next level. Hold SWING to wind up, slide to aim, let go to swing.',false,'dsel')};
 $('onlineBtn').onclick=()=>openOnline();
 async function toMenu(){await leaveMatch();$('shop').hidden=true;paused=false;G=Object.assign(castOf(),{phase:'title',top:true,bases:[0,0,0],mode:'game',outs:0,balls:0,strikes:0,you:0,cpu:0,inning:1});P=F=CT=null;floaters=[];PARTS=[];buildField(LV());
- showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)}
+ showOverlay('Cash Diamond™','Pick a mode. Win games to move up the leagues.',false)}
 $('menuBtn').onclick=e=>{e.stopPropagation();toMenu()};
-$('onBack').onclick=async()=>{await leaveMatch();$('online').hidden=true;showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)};
+$('onBack').onclick=async()=>{await leaveMatch();$('online').hidden=true;showOverlay('Cash Diamond™','Pick a mode. Win games to move up the leagues.',false)};
 function layout(){const st=$('stage').getBoundingClientRect(),w=Math.max(200,Math.min(st.width,st.height*400/520));const pk=$('park');pk.style.width=w+'px';pk.style.height=((w-6)*520/400+6)+'px'}
 layout();addEventListener('resize',layout);
 
@@ -1642,7 +1642,7 @@ function renderShop(){const box=$('items');box.innerHTML='';$('shopMoney').textC
 
 fit();addEventListener('resize',()=>{if(Math.min(window.devicePixelRatio||1,2.5)!==DPR)fit()});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>buildField(LV()));
-showOverlay('Cash Diamond','Win to move up: sandlot, Little League, high school, college, minors, the big leagues, then the World Series.',true);
+showOverlay('Cash Diamond™','Win to move up: sandlot, Little League, high school, college, minors, the big leagues, then the World Series.',true);
 // keep your place if the page refreshes (the app reloads open games when a new version is published)
 function resumeFrom(d){try{if(!d||!d.mode)return;$('title').hidden=true;if(d.mode==='pitchch')newPitchStage(d.si|0);else if(d.mode==='derby'&&!d.online)newDerby({dlv:d.dlv??((d.round||1)-1)});else if(d.mode==='game'&&!d.online)newGame()}catch(e){}}
 try{window.claude?.hot?.snapshot?.(()=>({mode:G.phase==='title'?null:G.mode,si:G.pcSi,round:G.round,dlv:G.dlv,online:G.online}))}catch(e){}
@@ -2122,7 +2122,7 @@ window.CDT=(()=>{
  function open(code){if(code&&(!st||st.code!==String(code).toUpperCase())){if(st||sess)end();pending=String(code).toUpperCase()}
   if(!st&&sess&&closed){closed=false;connect({t:'tresume',code:sess.code,token:sess.token})}
   show()}
- document.getElementById('tBack').onclick=()=>{hide();if(G&&G.vs&&G.phase==='over')toMenu();else showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)};
+ document.getElementById('tBack').onclick=()=>{hide();if(G&&G.vs&&G.phase==='over')toMenu();else showOverlay('Cash Diamond™','Pick a mode. Win games to move up the leagues.',false)};
 
  // title screen button
  const tb=document.createElement('button');tb.className='big';tb.id='tourBtn';tb.textContent='🏆 Tournament';tb.style.cssText='flex:1 1 100%;background:#3fae5a;color:#fff;text-shadow:0 2px 0 var(--ink)';
