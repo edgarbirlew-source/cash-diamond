@@ -163,7 +163,7 @@ window.CDT=(()=>{
  function open(code){if(code&&(!st||st.code!==String(code).toUpperCase())){if(st||sess)end();pending=String(code).toUpperCase()}
   if(!st&&sess&&closed){closed=false;connect({t:'tresume',code:sess.code,token:sess.token})}
   show()}
- document.getElementById('tBack').onclick=()=>{hide();if(G&&G.vs&&G.phase==='over')toMenu();else showOverlay('Cash Diamond','Pick a mode. Win games to move up the leagues.',false)};
+ document.getElementById('tBack').onclick=()=>{hide();if(G&&G.vs&&G.phase==='over')toMenu();else showOverlay('Cash Diamond™','Pick a mode. Win games to move up the leagues.',false)};
 
  // title screen button
  const tb=document.createElement('button');tb.className='big';tb.id='tourBtn';tb.textContent='🏆 Tournament';tb.style.cssText='flex:1 1 100%;background:#3fae5a;color:#fff;text-shadow:0 2px 0 var(--ink)';
