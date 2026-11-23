@@ -1,0 +1,39 @@
+name: PR check
+
+# Runs on every pull request into main so PRs get a green or red check before merge.
+# Read-only: no secrets, no store builds, no uploads. Upload workflows stay manual/push-only.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Static checks (syntax, inline scripts, web + store builds)
+        run: |
+          if [ -f _src/static-check.sh ]; then
+            bash _src/static-check.sh
+          else
+            echo "_src/static-check.sh not on this branch yet; skipped"
+          fi
