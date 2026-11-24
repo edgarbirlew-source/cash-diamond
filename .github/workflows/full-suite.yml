@@ -1,0 +1,68 @@
+name: Full suite
+
+# CI-10 (games-lead): runs the whole Playwright suite (_src/test*.mjs) on pull requests into main,
+# so the owner rule "merge only if the FULL suite passes" can be checked without a local browser.
+# Read-only: no secrets, no store builds, no uploads.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-suite-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: oven-sh/setup-bun@v2
+      - name: Playwright + Chromium
+        run: |
+          npm i -g playwright@1.49.1
+          npm i --no-save --no-package-lock playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Build web + store versions
+        run: |
+          python3 _src/build.py _src/v21.html vX
+          python3 _src/build.py _src/v21.html s --store
+          mkdir -p site
+          for f in manifest.webmanifest icons birco privacy.html; do [ -e "$f" ] && cp -r "$f" site/; done
+          cp -r dist/* site/
+      - name: Start game (8099) and room server (3000)
+        run: |
+          (cd site && python3 -m http.server 8099 > ../game.log 2>&1 &)
+          T_JOIN_MS=15000 T_AWAY_MS=15000 T_REPORT_MS=5000 T_TICK_MS=1000 PORT=3000 nohup bun _src/server/vs.ts > vs.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:8099/ && break; sleep 1; done
+          sleep 2; tail -3 vs.log
+      - name: Run every test
+        env:
+          SHOTS: ${{ github.workspace }}/shots
+        run: |
+          mkdir -p out shots
+          node _src/suite-judge.mjs out shots
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-suite-results
+          path: |
+            out/
+            shots/
+            vs.log
+          retention-days: 14
