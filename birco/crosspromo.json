@@ -58,6 +58,20 @@
       "live": { "play": false, "appstore": false },
       "age": "",
       "kidsSafe": true
+    },
+    {
+      "id": "recongames",
+      "name": "Recon Games",
+      "pitch": "Coming soon: play with Recon the Raccoon.",
+      "icon": "",
+      "soon": true,
+      "show": false,
+      "video": { "enabled": false, "src": "", "poster": "", "seconds": 30, "learnMore": "" },
+      "play": "",
+      "appstore": "",
+      "live": { "play": false, "appstore": false },
+      "age": "Everyone",
+      "kidsSafe": true
     }
   ],
   "recon": {
