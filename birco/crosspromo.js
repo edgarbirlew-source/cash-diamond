@@ -52,6 +52,7 @@
       var live = a.live || {}, url = '', kind = '';
       if (p === 'ios') { if (live.appstore && a.appstore) { url = a.appstore; kind = 'appstore' } }
       else if (p === 'android') { if (live.play && a.play) { url = a.play; kind = 'play' } }
+      else if (p === 'windows') { if (live.microsoft && a.microsoft) { url = a.microsoft; kind = 'microsoft' } } // Windows build (init platform:'windows'): Microsoft Store links only, never Play
       else if (live.play && a.play) { url = a.play; kind = 'play' } // desktop / web: Google Play page
       if (!url) return;                                           // show only apps live in this store
       out.push({ id: a.id, name: a.name, pitch: a.pitch || '', icon: a.icon || '', age: a.age || '', btn: 'Get it', url: o.kids ? '' : tag(url, kind) });
