@@ -10,8 +10,9 @@
       "icon": "https://edgarbirlew-source.github.io/cash-diamond/icons/icon-192.png",
       "play": "https://play.google.com/store/apps/details?id=com.birco.cashdiamond",
       "appstore": "https://apps.apple.com/app/id6828503020",
+      "microsoft": "",
       "web": "https://edgarbirlew-source.github.io/cash-diamond/",
-      "live": { "play": true, "appstore": false },
+      "live": { "play": true, "appstore": false, "microsoft": false },
       "age": "Everyone / 4+",
       "kidsSafe": true
     },
