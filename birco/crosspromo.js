@@ -48,6 +48,7 @@
     (c.apps || []).forEach(function (a) {
       if (!a || a.id === o.game) return;                       // hide this game's own tile
       if (o.kids && !a.kidsSafe) return;
+      if (a.soon) { if (a.show === true) out.push({ id: a.id, name: a.name, pitch: a.pitch || 'Coming soon', icon: a.icon || '', age: a.age || '', btn: '', url: '' }); return } // coming-soon tile: no button, no link, only when show is true
       var live = a.live || {}, url = '', kind = '';
       if (p === 'ios') { if (live.appstore && a.appstore) { url = a.appstore; kind = 'appstore' } }
       else if (p === 'android') { if (live.play && a.play) { url = a.play; kind = 'play' } }
