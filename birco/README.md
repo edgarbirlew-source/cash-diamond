@@ -24,3 +24,5 @@ moreButton.onclick = () => BIRCO.promo.open();
 ```
 Rewarded ads + Full Game for Capacitor games: copy `app/src/native.js` (the `CDN.ads` part), `app/ads.config.json` and
 `app/ads-apply.mjs` from Cash Diamond. All AdMob ids sit in `ads.config.json`; kids games set `childDirected: true`.
+
+Coming-soon tile (staging): an `apps` entry with `"soon": true` shows a tile with no button and no link, only when `"show": true`. `recongames` ships with `show: false`, so nothing changes until it is flipped on. Its `video` block (enabled, src, poster, seconds, learnMore) is reserved for a future video tile; the module ignores it today. Stores that bundle an older module copy need a new build to show a `soon` tile.
